@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="MinecraftManhunt:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/MinecraftManhunt_jar</output-path>
+    <root id="archive" name="MinecraftManhunt.jar">
+      <element id="module-output" name="MinecraftManhunt" />
+    </root>
+  </artifact>
+</component>

@@ -1,0 +1,10 @@
+name: MinecraftManhunt
+version: '${project.version}'
+main: me.tsvrn9.minecraftmanhunt.MinecraftManhunt
+api-version: '1.21'
+
+commands:
+  minecraftmanhunt:
+    aliases: mm
+  shout:
+    aliases: s
