@@ -14,7 +14,6 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PiglinBarterEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -34,22 +33,20 @@ import java.util.stream.Stream;
 import static java.lang.StringTemplate.STR;
 
 public final class MinecraftManhunt extends JavaPlugin implements Listener {
-    private ItemStack compass;
-    private List<ItemStack> opArmor;
-    private ItemStack opAxe;
-    private final List<String> OP_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
+    private static ItemStack compass;
+    private static List<ItemStack> opArmor;
+    private static ItemStack opAxe;
+    private static final List<String> OP_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
 
-    private final Map<World, Location> lastKnownLocation = new HashMap<>();
-    private final PotionEffect SPEED_III = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 2);
-    private final PotionEffect SPEED_II = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1);
-    private final PotionEffect SPEED_I = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 0);
+    private static final Map<World, Location> lastKnownLocation = new HashMap<>();
+    private static final PotionEffect SPEED_III = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 2);
+    private static final PotionEffect SPEED_II = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1);
+    private static final PotionEffect SPEED_I = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 0);
 
-    private Player runner = null;
-    private boolean opgear = false;
-    private boolean hunterbuffs = true;
-    private boolean runnerbuffs = true;
-
-    private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
+    private static Player runner = null;
+    private static boolean opgear = false;
+    private static boolean hunterbuffs = true;
+    private static boolean runnerbuffs = true;
 
     @Override
     public void onEnable() {
@@ -126,11 +123,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         } else {
             return null;
         }
-    }
-
-    @Override
-    public void onDisable() {
-        // Plugin shutdown logic
     }
 
     @Override
@@ -242,8 +234,10 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         world.setTime(1000);
     }
 
-    public boolean isRunner(Player p) { return p.equals(runner); }
-    public boolean isHunter(Player p) { return !p.equals(runner); }
+    public static boolean isRunner(Player p) { return p.equals(runner); }
+    public static boolean isHunter(Player p) { return !p.equals(runner); }
+    public static Player getRunner() { return runner; }
+
     public void giveHunterGear(Player p) {
         if (opgear) {
             ItemStack[] armor = opArmor.toArray(new ItemStack[0]);
@@ -418,11 +412,4 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
-        if (usingPrivateChannel.get(event.getPlayer()) && isHunter(event.getPlayer())) {
-            event.getRecipients().remove(runner);
-            event.setFormat(STR."\{ChatColor.LIGHT_PURPLE}Private:\{ChatColor.RESET} <%s> %s");
-        }
-    }
 }
