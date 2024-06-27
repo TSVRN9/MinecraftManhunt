@@ -1,4 +1,4 @@
-package me.tsvrn9.minecraftmanhunt.features;
+package me.tsvrn9.minecraftmanhunt.configuration;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,6 +8,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface ConfigValue {
-    String path();
-    String defaultValue();
+    String value();
 }

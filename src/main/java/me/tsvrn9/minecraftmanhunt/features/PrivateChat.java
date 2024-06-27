@@ -1,28 +1,26 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PrivateChat implements Feature {
     private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
-    private boolean defaultValue;
 
-    @Override
-    public void onLoad(ConfigurationSection section) {
-        defaultValue = section.get("default_value");
-    }
+    @ConfigValue("enabled_on_join")
+    private boolean enabledOnJoin = true;
 
     @Override
     public String getPath() {
-        return "privatechat";
+        return "private_chat";
     }
 
     @EventHandler
@@ -35,6 +33,13 @@ public class PrivateChat implements Feature {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        event.getPlayer()
+        Player p = event.getPlayer();
+        usingPrivateChannel.put(p, enabledOnJoin);
+    }
+
+    @EventHandler
+    public void onLeave(PlayerQuitEvent event) {
+        Player p = event.getPlayer();
+        usingPrivateChannel.remove(p);
     }
 }
