@@ -23,8 +23,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -39,9 +37,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     private static final List<String> OP_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
 
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
-    private static final PotionEffect SPEED_III = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 2);
-    private static final PotionEffect SPEED_II = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1);
-    private static final PotionEffect SPEED_I = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 0);
 
     private static Player runner = null;
     private static boolean opgear = false;
@@ -87,25 +82,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             if (!hunterbuffs || runner == null ) return; // minimal impact cuz this is the only plugin & this isn't prod
 
-            for (Player hunter : Bukkit.getOnlinePlayers()) {
-                Location location = runner.getWorld().equals(hunter.getWorld()) ? runner.getLocation() : lastKnownLocation.get(hunter.getWorld());
-
-                if (location == null) return;
-
-                double distanceSquared = location.distanceSquared(hunter.getLocation());
-                PotionEffect speedBuff = calculateSpeedBuff(distanceSquared);
-
-                if (speedBuff == null) {
-                    hunter.removePotionEffect(PotionEffectType.SPEED);
-                } else {
-                    PotionEffect currentSpeed = hunter.getActivePotionEffects().stream()
-                            .filter(p -> p.getType() == PotionEffectType.SPEED).findFirst().orElse(null);
-                    if (currentSpeed != null && currentSpeed.getAmplifier() > speedBuff.getAmplifier()) {
-                        hunter.removePotionEffect(PotionEffectType.SPEED);
-                    }
-                    hunter.addPotionEffect(speedBuff);
-                }
-            }
         }, 0, 20*10);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> {
@@ -113,17 +89,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         }, 0, 20*4);
     }
 
-    private PotionEffect calculateSpeedBuff(double distanceSquared) {
-        if (distanceSquared > 2250*2250) {
-            return SPEED_III;
-        } else if (distanceSquared > 1500*1500) {
-            return SPEED_II;
-        } else if (distanceSquared > 750*750) {
-            return SPEED_I;
-        } else {
-            return null;
-        }
-    }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
@@ -161,28 +126,9 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                     runner = player;
                     sender.sendMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
-                case "opgear" -> {
-                    opgear =  !opgear;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}OP Hunter gear is now \{ChatColor.BOLD}\{opgear ? "enabled" : "disabled"}");
+                case "setting" -> {
+
                 }
-                case "runnerbuffs" -> {
-                    runnerbuffs =  !runnerbuffs;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}Runner buffs are now \{ChatColor.BOLD}\{runnerbuffs ? "enabled" : "disabled"}");
-                }
-                case "hunterbuffs" -> {
-                    hunterbuffs =  !hunterbuffs;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}Hunter buffs are now \{ChatColor.BOLD}\{hunterbuffs ? "enabled" : "disabled"}");
-                }
-                case "private" -> {
-                    if (sender instanceof Player player) {
-                        boolean usingPrivate = !usingPrivateChannel.get(player);
-                        usingPrivateChannel.put(player, usingPrivate);
-                        sender.sendMessage(STR."\{ChatColor.GREEN}Private channel is now \{ChatColor.BOLD}\{usingPrivate ? "enabled" : "disabled"}");
-                    } else {
-                        sender.sendMessage("Nice try console...");
-                    }
-                }
-                case "giveitems" -> giveItems();
                 case "reset" -> reset();
                 default -> {
                     sender.sendMessage(STR."\{ChatColor.RED}Not a valid command!");
@@ -238,7 +184,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public static boolean isHunter(Player p) { return !p.equals(runner); }
     public static Player getRunner() { return runner; }
 
-    public void giveHunterGear(Player p) {
+    public static void giveHunterGear(Player p) {
         if (opgear) {
             ItemStack[] armor = opArmor.toArray(new ItemStack[0]);
             p.getInventory().setArmorContents(armor);
@@ -246,18 +192,18 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         }
         p.getInventory().addItem(compass);
     }
-    public boolean isRightClick(Action action) {
+
+    public static boolean isRightClick(Action action) {
         return action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
     }
 
-
-    public void giveItems() {
+    public static void giveItems() {
         Bukkit.getOnlinePlayers().stream()
-                .filter(this::isHunter)
-                .forEach(this::giveHunterGear);
+                .filter(MinecraftManhunt::isHunter)
+                .forEach(MinecraftManhunt::giveHunterGear);
     }
 
-    public String updateCompass(Player p) {
+    public static String updateCompass(Player p) {
         ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
 
         if (runner == null) return STR."\{ChatColor.RED}Use \"/mm speedrunner <name>\" to set a speedrunner";
@@ -311,6 +257,13 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
             }
         return STR."\{ChatColor.RED}How did you get here??";
+    }
+
+    public static TrackedLocation getLastKnownLocation(World world) {
+        boolean isOutdated = !runner.getWorld().equals(world);
+        Location location = isOutdated ? lastKnownLocation.get(world) : runner.getLocation();
+
+        return new TrackedLocation(location, isOutdated);
     }
 
     @EventHandler
