@@ -9,4 +9,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface ConfigValue {
     String value();
+    Class<? extends Validator> validator() default NoValidator.class;
 }

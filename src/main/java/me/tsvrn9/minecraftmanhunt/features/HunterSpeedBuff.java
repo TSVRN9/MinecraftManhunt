@@ -5,6 +5,7 @@ import me.tsvrn9.minecraftmanhunt.TrackedLocation;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class HunterSpeedBuff implements Feature {
+public class HunterSpeedBuff implements Feature, Listener {
     private List<SpeedThreshold> thresholds = getDefaultThresholds();
 
     private final BukkitRunnable bukkitRunnable = new BukkitRunnable() {
@@ -41,6 +42,9 @@ public class HunterSpeedBuff implements Feature {
             }
         }
     };
+
+    private PotionEffect getSpeedBuff(double distanceSquared) {
+    }
 
     @Override
     public void onEnable(Plugin plugin) {
