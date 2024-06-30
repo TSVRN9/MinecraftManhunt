@@ -1,8 +1,10 @@
 package me.tsvrn9.minecraftmanhunt.configuration;
 
-public class NoValidator implements Validator {
+import java.util.function.Predicate;
+
+public class NoValidator implements Predicate<Object> {
     @Override
-    public boolean validate(Object o) {
+    public boolean test(Object o) {
         return true;
     }
 }

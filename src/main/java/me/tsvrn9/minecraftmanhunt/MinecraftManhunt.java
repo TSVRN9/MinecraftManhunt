@@ -136,21 +136,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
 
             }
-        } else { // label == "shout"
-            if (args.length == 0 && sender instanceof Player player) {
-                usingPrivateChannel.put(player, false);
-                sender.sendMessage(STR."\{ChatColor.GREEN}Private channel is now \{ChatColor.BOLD}disabled");
-            } else {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < args.length; i++) {
-                    builder.append(args[i]);
-                    if (i != args.length - 1) {
-                        builder.append(" ");
-                    }
-                }
-
-                Bukkit.broadcastMessage(STR."<\{sender.getName()}> \{builder.toString()}");
-            }
         }
         return true;
     }
@@ -284,64 +269,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void modifyDamage(EntityDamageEvent event) {
-        if (event.getEntityType() == EntityType.PLAYER) {
-            Player p = (Player) event.getEntity();
-            EntityDamageEvent.DamageCause cause = event.getCause();
 
-            if (runnerbuffs && isRunner(p)) {
-                switch (cause) {
-                    case EntityDamageEvent.DamageCause.FIRE_TICK -> {
-                        if (p.getHealth() - event.getFinalDamage() <= 0) {
-                            p.setFireTicks(0);
-                            event.setCancelled(true);
-                        }
-                    }
-                    case EntityDamageEvent.DamageCause.FALL -> {
-                        if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                            damageToHalfAHeart(event);
-                        }
-                    }
-                }
-            }
-
-            if (hunterbuffs && isHunter(p)) {
-                if (cause == EntityDamageEvent.DamageCause.FALL) {
-                    if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                        damageToHalfAHeart(event);
-                    }
-                }
-            }
-        }
-    }
-
-    public void damageToHalfAHeart(EntityDamageEvent event) {
-        LivingEntity e = (LivingEntity) event.getEntity();
-        if (e.getHealth() > .5) {
-            e.setHealth(
-                    Math.max(e.getHealth() - event.getFinalDamage(), 0.5)
-            );
-            event.setDamage(0);
-        }
-
-    }
-
-    @EventHandler
-    public void buffTrades(PiglinBarterEvent event) {
-        if (runnerbuffs && Math.random() < .2) {
-            event.getOutcome().add(new ItemStack(Material.ENDER_PEARL, (int) Math.ceil(Math.random() * 2)));
-        }
-    }
-
-    @EventHandler
-    public void buffBlazes(EntityDeathEvent event) {
-        if (runnerbuffs && event.getEntityType() == EntityType.BLAZE) {
-            event.getDrops().clear();
-            if (Math.random() < .75)
-                event.getDrops().add(new ItemStack(Material.BLAZE_ROD));
-        }
-    }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
@@ -364,5 +292,4 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
             giveHunterGear(player);
         }
     }
-
 }

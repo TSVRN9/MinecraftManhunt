@@ -2,6 +2,7 @@ package me.tsvrn9.minecraftmanhunt.features;
 
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
 import me.tsvrn9.minecraftmanhunt.TrackedLocation;
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
@@ -12,10 +13,25 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 public class HunterSpeedBuff implements Feature, Listener {
+    private static class ThresholdProcessor implements UnaryOperator<Object> {
+        @Override
+        public Object apply(Object o) {
+            @SuppressWarnings("unchecked")
+            List<SpeedThreshold> thresholds = (List<SpeedThreshold>) o;
+            thresholds.sort(
+                    Comparator.comparingDouble(a -> a.distanceThreshold)
+            );
+            return thresholds;
+        }
+    }
+
+    @ConfigValue(path = "thresholds", processor = ThresholdProcessor.class)
     private List<SpeedThreshold> thresholds = getDefaultThresholds();
 
     private final BukkitRunnable bukkitRunnable = new BukkitRunnable() {
@@ -44,6 +60,12 @@ public class HunterSpeedBuff implements Feature, Listener {
     };
 
     private PotionEffect getSpeedBuff(double distanceSquared) {
+        for (SpeedThreshold threshold : thresholds) {
+            if (threshold.distanceThreshold*threshold.distanceThreshold > distanceSquared) {
+                return new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, threshold.amplifier);
+            }
+        }
+        return null; // remove effect
     }
 
     @Override
@@ -61,14 +83,6 @@ public class HunterSpeedBuff implements Feature, Listener {
         return "hunter_speed_buff";
     }
 
-    private void ensureThresholdOrder() {
-        thresholds.sort(
-                (a, b) -> {
-                    double difference = a.distanceThreshold() - b.distanceThreshold();
-                    return difference < 0 ? -1 : difference > 0 ? 1 : 0;
-                }
-        );
-    }
 
     private List<SpeedThreshold> getDefaultThresholds() {
         return new ArrayList<>(List.of(
@@ -78,12 +92,13 @@ public class HunterSpeedBuff implements Feature, Listener {
         ));
     }
 
-    private record SpeedThreshold(int amplifier, double distanceThreshold) implements ConfigurationSerializable, Comparable<SpeedThreshold> {
+    private record SpeedThreshold(int amplifier, double distanceThreshold) implements ConfigurationSerializable {
         public SpeedThreshold {
             if (amplifier < 0) throw new IllegalArgumentException("Amplifier cannot be negative");
             if (distanceThreshold < 0) throw new IllegalArgumentException("Amplifier cannot be negative");
         }
 
+        @SuppressWarnings("unused")
         public static SpeedThreshold deserialize(Map<String, Object> map) {
             int amplifier = Integer.parseInt((String) map.get("amplifier"));
             double radius = Double.parseDouble((String) map.get("distance_threshold"));
@@ -97,10 +112,6 @@ public class HunterSpeedBuff implements Feature, Listener {
                     "amplifier", Integer.toString(amplifier),
                     "distance_threshold", Double.toString(distanceThreshold)
             );
-        }
-
-        @Override
-        public int compareTo(SpeedThreshold o) {
         }
     }
 }

@@ -26,26 +26,48 @@ public class Features implements CommandExecutor, TabCompleter {
 
     public static final List<Feature> FEATURES = List.of(
             new PrivateChat(),
-            new HunterSpeedBuff()
+            new HunterSpeedBuff(),
+            new BuffPiglinTrades(),
+            new BuffRodDropRate(),
+            new PreventBoringDeaths()
     );
 
-    public static void enableAll(JavaPlugin plugin) {
+    public static void load(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
-            enable(feature, plugin, config);
+            ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+            if (section == null || section.getBoolean("enabled")) {
+                enable(feature, plugin);
+            }
+        }
+    }
+
+    public static void save(JavaPlugin plugin) {
+        FileConfiguration config = plugin.getConfig();
+        for (Feature feature : FEATURES) {
+            boolean wasEnabled = isEnabled.get(feature);
+            disableAll(plugin);
+            ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+            assert section != null;
+            section.set("enabled", wasEnabled);
+        }
+    }
+
+    public static void enableAll(JavaPlugin plugin) {
+        for (Feature feature : FEATURES) {
+            enable(feature, plugin);
         }
     }
 
     public static void disableAll(JavaPlugin plugin) {
-        FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
             disable(feature, plugin, false);
         }
         plugin.saveConfig();
     }
 
-    public static void enable(Feature feature, JavaPlugin plugin, FileConfiguration config) {
-        ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+    public static void enable(Feature feature, JavaPlugin plugin) {
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(feature.getPath());
 
         if (section != null) {
             ConfigurableLoader.load(feature, section);
@@ -95,6 +117,7 @@ public class Features implements CommandExecutor, TabCompleter {
         }
 
         ConfigurableLoader.save(feature, section);
+
         feature.onDisable(plugin);
 
         isEnabled.put(feature, false);
