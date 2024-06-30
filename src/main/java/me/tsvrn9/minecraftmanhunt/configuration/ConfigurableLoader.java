@@ -1,10 +1,8 @@
 package me.tsvrn9.minecraftmanhunt.configuration;
 
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
@@ -22,8 +20,16 @@ public class ConfigurableLoader {
         typeHandlers.put(byte.class, (section, key) -> (byte) section.getInt(key));
         typeHandlers.put(short.class, (section, key) -> (short) section.getInt(key));
         typeHandlers.put(char.class, (section, key) -> Objects.requireNonNull(section.getString(key)).charAt(0));
+        typeHandlers.put(Map.class, (section, key) -> {
+            HashMap<Object, Object> hashMap = new HashMap<>();
+            ConfigurationSection configurationMap = section.getConfigurationSection(key);
+            assert configurationMap != null;
+            configurationMap.getKeys(false).forEach(k -> hashMap.put(k, configurationMap.get(k)));
+            return hashMap;
+        });
     }
 
+    // NOT DEEP
     public static void load(Object feature, ConfigurationSection section) {
         Class<?> featureClass = feature.getClass();
         Set<String> keys = section.getKeys(false);
@@ -35,22 +41,12 @@ public class ConfigurableLoader {
                     ConfigValue configValue = field.getAnnotation(ConfigValue.class);
 
                     Class<?> clazz = field.getType();
-                    String key = configValue.path();
-                    Object unprocessedValue = typeHandlers.containsKey(clazz) && keys.contains(key)
+                    String key = configValue.value();
+                    Object value = typeHandlers.containsKey(clazz) && keys.contains(key)
                             ? typeHandlers.get(clazz).apply(section, key)
                             : section.getObject(key, clazz);
 
-                    if (unprocessedValue != null) {
-                        Predicate<Object> validator = configValue.validator().getDeclaredConstructor().newInstance();
-                        if (!validator.test(unprocessedValue)) {
-                            continue;
-                        }
-
-                        UnaryOperator<Object> processor = configValue.processor().getDeclaredConstructor().newInstance();
-                        Object processedValue = processor.apply(unprocessedValue);
-
-                        field.set(feature, processedValue);
-                    }
+                    field.set(feature, value);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -67,7 +63,7 @@ public class ConfigurableLoader {
                     ConfigValue configValue = field.getAnnotation(ConfigValue.class);
 
                     Object value = field.get(feature);
-                    String key = configValue.path();
+                    String key = configValue.value();
 
                     section.set(key, value);
                 } catch (Exception e) {

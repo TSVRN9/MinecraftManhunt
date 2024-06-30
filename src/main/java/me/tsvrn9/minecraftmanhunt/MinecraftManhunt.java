@@ -1,18 +1,14 @@
 package me.tsvrn9.minecraftmanhunt;
 
+import me.tsvrn9.minecraftmanhunt.features.Features;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.PiglinBarterEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
@@ -40,12 +36,11 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     private static Player runner = null;
     private static boolean opgear = false;
-    private static boolean hunterbuffs = true;
-    private static boolean runnerbuffs = true;
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
+        Features.registerConfigurationSerializables();
 
         ItemStack compass = new ItemStack(Material.COMPASS);
         ItemMeta compassMeta = compass.getItemMeta();
@@ -75,20 +70,16 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         opAxe.addEnchantment(Enchantment.SHARPNESS, 1);
         opAxe.addEnchantment(Enchantment.UNBREAKING, 3);
 
-        this.compass = compass;
-        this.opArmor = opArmor;
-        this.opAxe = opAxe;
+        MinecraftManhunt.compass = compass;
+        MinecraftManhunt.opArmor = opArmor;
+        MinecraftManhunt.opAxe = opAxe;
 
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            if (!hunterbuffs || runner == null ) return; // minimal impact cuz this is the only plugin & this isn't prod
-
-        }, 0, 20*10);
-
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            Bukkit.getOnlinePlayers().forEach(MinecraftManhunt::updateCompass);
-        }, 0, 20*4);
     }
 
+    @Override
+    public void onDisable() {
+        Features.save(this);
+    }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
@@ -123,11 +114,22 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                         return false;
                     }
 
+                    if (runner == null) {
+                        // first chosen, so we set-up all of our features here
+                        Features.load(this);
+                    }
+
                     runner = player;
                     sender.sendMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
                 case "setting" -> {
 
+                }
+                case "save" -> {
+                    saveConfig();
+                }
+                case "reload" -> {
+                    reloadConfig();
                 }
                 case "reset" -> reset();
                 default -> {
@@ -268,8 +270,6 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
             lastKnownLocation.put(event.getFrom().getWorld(), event.getFrom());
         }
     }
-
-
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {

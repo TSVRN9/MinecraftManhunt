@@ -9,7 +9,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class BuffRodDropRate implements Feature, Listener {
-    @ConfigValue(path="rod_drop_probability")
+    @ConfigValue(value ="rod_drop_probability")
     private double rodDropProbability = .75;
 
     @Override

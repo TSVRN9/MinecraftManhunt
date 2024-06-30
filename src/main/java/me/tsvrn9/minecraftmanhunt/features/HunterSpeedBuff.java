@@ -16,23 +16,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.UnaryOperator;
 
 public class HunterSpeedBuff implements Feature, Listener {
-    private static class ThresholdProcessor implements UnaryOperator<Object> {
-        @Override
-        public Object apply(Object o) {
-            @SuppressWarnings("unchecked")
-            List<SpeedThreshold> thresholds = (List<SpeedThreshold>) o;
-            thresholds.sort(
-                    Comparator.comparingDouble(a -> a.distanceThreshold)
-            );
-            return thresholds;
-        }
-    }
-
-    @ConfigValue(path = "thresholds", processor = ThresholdProcessor.class)
+    @ConfigValue("thresholds")
     private List<SpeedThreshold> thresholds = getDefaultThresholds();
+
+    @ConfigValue("check_frequency_in_ticks")
+    private long checkInTicks = 60L;
 
     private final BukkitRunnable bukkitRunnable = new BukkitRunnable() {
         @Override
@@ -70,7 +60,11 @@ public class HunterSpeedBuff implements Feature, Listener {
 
     @Override
     public void onEnable(Plugin plugin) {
-        bukkitRunnable.runTaskTimer(plugin, 0L, 20L);
+        thresholds.sort(
+                Comparator.comparingDouble(a -> a.distanceThreshold)
+        );
+
+        bukkitRunnable.runTaskTimer(plugin, 0L, checkInTicks);
     }
 
     @Override
@@ -81,6 +75,11 @@ public class HunterSpeedBuff implements Feature, Listener {
     @Override
     public String getPath() {
         return "hunter_speed_buff";
+    }
+
+    @Override
+    public Class<?>[] getConfigurationSerializables() {
+        return new Class<?>[] { SpeedThreshold.class };
     }
 
 

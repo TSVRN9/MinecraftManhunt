@@ -11,8 +11,12 @@ public interface Feature {
         return null;
     }
 
+    default Class<?>[] getConfigurationSerializables() {
+        return null;
+    }
+
     /**
-     * This represents the yaml path where all configuration values for this feature will lie
+     * This represents the yaml value where all configuration values for this feature will lie
      */
     String getPath();
 }

@@ -8,7 +8,7 @@ import org.bukkit.event.entity.PiglinBarterEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class BuffPiglinTrades implements Feature, Listener {
-    @ConfigValue(path="pearl_probability")
+    @ConfigValue(value ="pearl_probability")
     private double pearlProbability = .2;
 
     @Override

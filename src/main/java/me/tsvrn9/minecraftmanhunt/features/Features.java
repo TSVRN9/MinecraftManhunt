@@ -1,5 +1,6 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -9,20 +10,24 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.serialization.ConfigurationSerializable;
+import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class Features implements CommandExecutor, TabCompleter {
     private Features() {}
 
-    private static Features SINGLETON = new Features();
-    private static Map<String, Feature> commandRegistry = new HashMap<>();
-    private static Map<String, Feature> tabRegistry = new HashMap<>();
-    private static Map<Feature, Boolean> isEnabled = new HashMap<>();
+    private static final Features SINGLETON = new Features();
+    private static final Map<String, Feature> pathToFeature = new HashMap<>();
+    private static final Map<String, Feature> commandRegistry = new HashMap<>();
+    private static final Map<String, Feature> tabRegistry = new HashMap<>();
+    private static final Map<Feature, Boolean> isEnabled = new HashMap<>();
 
     public static final List<Feature> FEATURES = List.of(
             new PrivateChat(),
@@ -31,6 +36,30 @@ public class Features implements CommandExecutor, TabCompleter {
             new BuffRodDropRate(),
             new PreventBoringDeaths()
     );
+
+    static {
+        // init pathToFeature mao
+        for (Feature feature : FEATURES) {
+            pathToFeature.put(feature.getPath(), feature);
+        }
+    }
+
+    public static void registerConfigurationSerializables() {
+        for (Feature feature : FEATURES) {
+            Class<?>[] serializables = feature.getConfigurationSerializables();
+            if (serializables != null) {
+                for (Class<?> serializable : serializables) {
+                    if (ConfigurationSerializable.class.isAssignableFrom(serializable)) {
+                        @SuppressWarnings("unchecked")
+                        Class<? extends ConfigurationSerializable> clazz = (Class<? extends ConfigurationSerializable>) serializable;
+                        ConfigurationSerialization.registerClass(clazz, serializable.getSimpleName());
+                    } else {
+                        throw new IllegalStateException(STR."Class \{serializable.getName()} is not a ConfigurationSerializable");
+                    }
+                }
+            }
+        }
+    }
 
     public static void load(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
@@ -79,7 +108,7 @@ public class Features implements CommandExecutor, TabCompleter {
             if (feature instanceof CommandExecutor) {
                 for (String command : handledCommands) {
                     command = command.toLowerCase();
-                    plugin.getCommand(command).setExecutor(SINGLETON);
+                    Objects.requireNonNull(plugin.getCommand(command)).setExecutor(SINGLETON);
                     commandRegistry.put(command, feature);
                 }
             } else {
@@ -90,7 +119,7 @@ public class Features implements CommandExecutor, TabCompleter {
             if (feature instanceof TabCompleter) {
                 for (String command : handledCommands) {
                     command = command.toLowerCase();
-                    plugin.getCommand(command).setTabCompleter(SINGLETON);
+                    Objects.requireNonNull(plugin.getCommand(command)).setTabCompleter(SINGLETON);
                     tabRegistry.put(command, feature);
                 }
             }
@@ -124,7 +153,6 @@ public class Features implements CommandExecutor, TabCompleter {
 
         if (save) plugin.saveConfig();
     }
-
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {

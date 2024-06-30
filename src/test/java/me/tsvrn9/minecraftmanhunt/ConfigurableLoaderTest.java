@@ -2,6 +2,7 @@ package me.tsvrn9.minecraftmanhunt;
 
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,21 +42,28 @@ public class ConfigurableLoaderTest {
     }
 
     @Test
-    public void loadSerialized() {
-        // TODO
+    public void loadSerialized() throws InvalidConfigurationException {
+        ConfigurableLoader.save(alt, config);
+        String serialized = config.saveToString();
+
+        config = new YamlConfiguration();
+        config.loadFromString(serialized);
+
+        ConfigurableLoader.load(obj, config);
+        assertEquals(alt, obj, "Values should be overridden to match the section");
     }
 
     public static class SomeConfigurable {
-        @ConfigValue(path = "integer")
+        @ConfigValue(value = "integer")
         private int i;
 
-        @ConfigValue(path = "string")
+        @ConfigValue(value = "string")
         private String helloWorld;
 
-        @ConfigValue(path = "map")
+        @ConfigValue(value = "map")
         private Map<String, Integer> map;
 
-        @ConfigValue(path = "list")
+        @ConfigValue(value = "list")
         private List<Double> list;
 
         public SomeConfigurable(int i, String helloWorld, Map<String, Integer> map, List<Double> list) {

@@ -1,6 +1,7 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -10,7 +11,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 
 public class PreventBoringDeaths implements Feature, Listener {
-    // TODO make configurable
+    @ConfigValue(value = "hunter.prevent_fire_tick_death")
+    private boolean hunterPreventFireTickDeath = true;
+    @ConfigValue(value = "hunter.prevent_fall_damage_death_in_end")
+    private boolean hunterPreventFallDamageDeathInEnd = true;
+
+    @ConfigValue(value = "runner.prevent_fire_tick_death")
+    private boolean runnerPreventFireTickDeath = true;
+    @ConfigValue(value = "runner.prevent_fall_damage_death_in_end")
+    private boolean runnerPreventFallDamageDeathInEnd = true;
 
     @EventHandler
     public void modifyDamage(EntityDamageEvent event) {
@@ -18,24 +27,20 @@ public class PreventBoringDeaths implements Feature, Listener {
             Player p = (Player) event.getEntity();
             EntityDamageEvent.DamageCause cause = event.getCause();
 
-            if (MinecraftManhunt.isRunner(p)) {
-                switch (cause) {
-                    case EntityDamageEvent.DamageCause.FIRE_TICK -> {
-                        if (p.getHealth() - event.getFinalDamage() <= 0) {
-                            p.setFireTicks(0);
-                            event.setCancelled(true);
-                        }
-                    }
-                    case EntityDamageEvent.DamageCause.FALL -> {
-                        if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                            damageToHalfAHeart(event);
-                        }
+            switch (cause) {
+                case EntityDamageEvent.DamageCause.FIRE_TICK -> {
+                    if (!((hunterPreventFireTickDeath && MinecraftManhunt.isHunter(p))
+                            || (runnerPreventFireTickDeath && MinecraftManhunt.isRunner(p)))) return;
+
+                    if (p.getHealth() - event.getFinalDamage() <= 0) {
+                        p.setFireTicks(0);
+                        event.setCancelled(true);
                     }
                 }
-            }
+                case EntityDamageEvent.DamageCause.FALL -> {
+                    if (!((hunterPreventFallDamageDeathInEnd && MinecraftManhunt.isHunter(p))
+                            || (runnerPreventFallDamageDeathInEnd && MinecraftManhunt.isRunner(p)))) return;
 
-            if (MinecraftManhunt.isHunter(p)) {
-                if (cause == EntityDamageEvent.DamageCause.FALL) {
                     if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
                         damageToHalfAHeart(event);
                     }

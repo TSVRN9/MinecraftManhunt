@@ -23,7 +23,7 @@ import java.util.Map;
 public class PrivateChat implements Feature, CommandExecutor, TabCompleter, Listener {
     private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
 
-    @ConfigValue(path = "enabled_on_join")
+    @ConfigValue(value = "enabled_on_join")
     private boolean enabledOnJoin = true;
 
     @Override
