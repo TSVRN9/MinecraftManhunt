@@ -4,6 +4,10 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
@@ -14,28 +18,23 @@ public class ConfigurableLoader {
             if (field.isAnnotationPresent(ConfigValue.class)) {
                 try {
                     field.setAccessible(true);
-                    if (ConfigurationSerializable.class.isAssignableFrom(field.getType())) {
-                        ConfigValue configValue = field.getAnnotation(ConfigValue.class);
 
-                        @SuppressWarnings("unchecked") // We just checked the type above...
-                        Class<? extends ConfigurationSerializable> clazz = (Class<? extends ConfigurationSerializable>) field.getType();
+                    ConfigValue configValue = field.getAnnotation(ConfigValue.class);
 
-                        String key = configValue.path();
-                        Object serializedValue = section.getSerializable(key, clazz);
+                    Class<?> clazz = field.getType();
+                    String key = configValue.path();
+                    Object unprocessedValue = section.getObject(key, clazz);
 
-                        if (serializedValue != null) {
-                            Predicate<Object> validator = configValue.validator().getDeclaredConstructor().newInstance();
-                            if (!validator.test(serializedValue)) {
-                                continue;
-                            }
-
-                            UnaryOperator<Object> processor = configValue.processor().getDeclaredConstructor().newInstance();
-                            Object processedValue = processor.apply(serializedValue);
-
-                            field.set(feature, processedValue);
+                    if (unprocessedValue != null) {
+                        Predicate<Object> validator = configValue.validator().getDeclaredConstructor().newInstance();
+                        if (!validator.test(unprocessedValue)) {
+                            continue;
                         }
-                    } else {
-                        throw new IllegalArgumentException("Any fields using @ConfigValue must implement ConfigurationSerializable");
+
+                        UnaryOperator<Object> processor = configValue.processor().getDeclaredConstructor().newInstance();
+                        Object processedValue = processor.apply(unprocessedValue);
+
+                        field.set(feature, processedValue);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -50,19 +49,12 @@ public class ConfigurableLoader {
             if (field.isAnnotationPresent(ConfigValue.class)) {
                 try {
                     field.setAccessible(true);
-                    if (ConfigurationSerializable.class.isAssignableFrom(field.getType())) {
-                        ConfigValue configValue = field.getAnnotation(ConfigValue.class);
+                    ConfigValue configValue = field.getAnnotation(ConfigValue.class);
 
-                        @SuppressWarnings("unchecked")
-                        Class<? extends ConfigurationSerializable> clazz = (Class<? extends ConfigurationSerializable>) field.getType();
+                    ConfigurationSerializable value = (ConfigurationSerializable) field.get(feature);
+                    String key = configValue.path();
 
-                        ConfigurationSerializable value = (ConfigurationSerializable) field.get(feature);
-                        String key = configValue.path();
-
-                        section.set(key, value);
-                    } else {
-                        throw new IllegalArgumentException("Any fields using @ConfigValue must implement ConfigurationSerializable");
-                    }
+                    section.set(key, value);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

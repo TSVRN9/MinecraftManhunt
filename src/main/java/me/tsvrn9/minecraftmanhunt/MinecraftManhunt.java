@@ -85,7 +85,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         }, 0, 20*10);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            Bukkit.getOnlinePlayers().forEach(this::updateCompass);
+            Bukkit.getOnlinePlayers().forEach(MinecraftManhunt::updateCompass);
         }, 0, 20*4);
     }
 
