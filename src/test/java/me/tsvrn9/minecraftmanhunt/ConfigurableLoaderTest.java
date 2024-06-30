@@ -2,44 +2,100 @@ package me.tsvrn9.minecraftmanhunt;
 
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ConfigurableLoaderTest {
+    YamlConfiguration config;
+
     SomeConfigurable obj;
     SomeConfigurable clone;
-    ConfigurationSection config;
+    SomeConfigurable alt;
 
     @BeforeEach
     public void setup() {
         config = new YamlConfiguration();
         obj = SomeConfigurable.getDefault();
         clone = SomeConfigurable.getDefault();
+        alt = SomeConfigurable.getAlternative();
     }
 
     @Test
-    public void testLoadFromDefaults() {
+    public void loadFromDefaults() {
         ConfigurableLoader.load(obj, config);
-        assertEquals(obj, clone, "When given an empty config, values should not be overriden");
+        assertEquals(clone, obj, "When given an empty section, values should not be overridden");
     }
 
-    private record SomeConfigurable(
-            @ConfigValue(path = "integer") int i,
-            @ConfigValue(path = "string") String helloWorld
-    ) {
-        private static SomeConfigurable getDefault() {
-            return new SomeConfigurable(3, "hello world!");
+    @Test
+    public void loadValuesFromConfig() {
+        ConfigurableLoader.save(alt, config);
+        ConfigurableLoader.load(obj, config);
+        assertEquals(alt, obj, "Values should be overridden to match the section");
+    }
+
+    @Test
+    public void loadSerialized() {
+        // TODO
+    }
+
+    public static class SomeConfigurable {
+        @ConfigValue(path = "integer")
+        private int i;
+
+        @ConfigValue(path = "string")
+        private String helloWorld;
+
+        @ConfigValue(path = "map")
+        private Map<String, Integer> map;
+
+        @ConfigValue(path = "list")
+        private List<Double> list;
+
+        public SomeConfigurable(int i, String helloWorld, Map<String, Integer> map, List<Double> list) {
+            this.i = i;
+            this.helloWorld = helloWorld;
+            this.map = map;
+            this.list = list;
+        }
+
+        public static SomeConfigurable getDefault() {
+            return new SomeConfigurable(
+                    3,
+                    "hello world!",
+                    Map.of("hello", 2, "world", 3),
+                    List.of(3.2 , 5.5, 2.1234, 9.4));
+        }
+
+        public static SomeConfigurable getAlternative() {
+            return new SomeConfigurable(
+                    -33,
+                    "goodbye world...",
+                    Map.of("brother", -20, "sister", 123),
+                    List.of(4.3, 3.2, -3.1234, 4883.2));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof SomeConfigurable that)) return false;
+            return i == that.i && Objects.equals(helloWorld, that.helloWorld) && Objects.equals(map, that.map) && Objects.equals(list, that.list);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(i, helloWorld, map, list);
+        }
+
+        @Override
+        public String toString() {
+            return STR."SomeConfigurable{i=\{i}, helloWorld='\{helloWorld}\{'\''}, map=\{map}, list=\{list}\{'}'}";
         }
     }
 }
