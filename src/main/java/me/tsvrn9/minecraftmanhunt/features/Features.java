@@ -1,6 +1,5 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
-import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -34,11 +33,13 @@ public class Features implements CommandExecutor, TabCompleter {
             new HunterSpeedBuff(),
             new BuffPiglinTrades(),
             new BuffRodDropRate(),
-            new PreventBoringDeaths()
+            new PreventBoringDeaths(),
+            new AutoUpdateCompass(),
+            new RunnerFortressTracking()
     );
 
     static {
-        // init pathToFeature mao
+        // init pathToFeature map
         for (Feature feature : FEATURES) {
             pathToFeature.put(feature.getPath(), feature);
         }
@@ -75,11 +76,13 @@ public class Features implements CommandExecutor, TabCompleter {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
             boolean wasEnabled = isEnabled.get(feature);
-            disableAll(plugin);
+            disable(feature, plugin);
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+            ConfigurableLoader.save(feature, section);
             assert section != null;
             section.set("enabled", wasEnabled);
         }
+        plugin.saveConfig();
     }
 
     public static void enableAll(JavaPlugin plugin) {
@@ -90,9 +93,8 @@ public class Features implements CommandExecutor, TabCompleter {
 
     public static void disableAll(JavaPlugin plugin) {
         for (Feature feature : FEATURES) {
-            disable(feature, plugin, false);
+            disable(feature, plugin);
         }
-        plugin.saveConfig();
     }
 
     public static void enable(Feature feature, JavaPlugin plugin) {
@@ -135,23 +137,20 @@ public class Features implements CommandExecutor, TabCompleter {
     }
 
     public static void disable(Feature feature, JavaPlugin plugin) {
-        disable(feature, plugin, true);
-    }
-
-    public static void disable(Feature feature, JavaPlugin plugin, boolean save) {
         ConfigurationSection section = plugin.getConfig().getConfigurationSection(feature.getPath());
 
         if (section == null) {
             section = plugin.getConfig().createSection(feature.getPath());
         }
 
-        ConfigurableLoader.save(feature, section);
 
         feature.onDisable(plugin);
 
         isEnabled.put(feature, false);
+    }
 
-        if (save) plugin.saveConfig();
+    public static Feature getFeature(String path) {
+        return pathToFeature.get(path);
     }
 
     @Override

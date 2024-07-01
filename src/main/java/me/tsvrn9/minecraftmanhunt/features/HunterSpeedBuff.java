@@ -28,7 +28,7 @@ public class HunterSpeedBuff implements Feature, Listener {
         @Override
         public void run() {
             for (Player hunter : Bukkit.getOnlinePlayers()) {
-                TrackedLocation trackedLocation = MinecraftManhunt.getLastKnownLocation(hunter.getWorld());
+                TrackedLocation trackedLocation = MinecraftManhunt.getRunnerLocation(hunter.getWorld());
 
                 if (!trackedLocation.exists()) return;
 

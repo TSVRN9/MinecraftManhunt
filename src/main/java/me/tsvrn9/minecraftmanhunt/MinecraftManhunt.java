@@ -13,7 +13,6 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.generator.structure.Structure;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
@@ -130,6 +129,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
                 case "reload" -> {
                     reloadConfig();
+                    Features.disableAll(this);
+                    Features.enableAll(this);
                 }
                 case "reset" -> reset();
                 default -> {
@@ -190,63 +191,39 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 .forEach(MinecraftManhunt::giveHunterGear);
     }
 
-    public static String updateCompass(Player p) {
-        ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
+    public static TrackedLocation updateHunterCompass(Player p) {
+        TrackedLocation trackedLocation = getRunnerLocation(p.getWorld());
 
-        if (runner == null) return STR."\{ChatColor.RED}Use \"/mm speedrunner <name>\" to set a speedrunner";
-
-        if (compass != null)
+        if (compass != null) {
             if (isHunter(p)) {
-                Location loc;
-                boolean isSameWorld = runner.getWorld().equals(p.getWorld());
-                World.Environment environment = runner.getWorld().getEnvironment();
-
-                if (isSameWorld) {
-                    loc = runner.getLocation();
-                } else {
-                    loc = lastKnownLocation.get(p.getWorld());
+                if (!trackedLocation.exists()) {
+                    return trackedLocation;
                 }
 
-                if (loc == null) {
-                    return STR."\{ChatColor.RED}No Location Found...";
-                }
-
-                if (environment == World.Environment.NORMAL) {
-                    p.setCompassTarget(runner.getLocation());
-                } else {
-                    CompassMeta meta = (CompassMeta) compass.getItemMeta();
-                    assert meta != null;
-                    meta.setItemName("Compass");
-                    meta.setLodestone(runner.getLocation());
-                    meta.setLodestoneTracked(false);
-                    compass.setItemMeta(meta);
-                }
-
-                if (isSameWorld) {
-                    return STR."\{ChatColor.YELLOW}Updated Compass";
-                } else {
-                    return STR."\{ChatColor.YELLOW}Updated Compass to Last Known Location";
-                }
-            } else {
-                if (runnerbuffs && p.getWorld().getEnvironment() == World.Environment.NETHER) {
-                    World nether = p.getWorld();
-
-                    Location result = Objects.requireNonNull(nether.locateNearestStructure(runner.getLocation(), Structure.FORTRESS, 750, false)).getLocation();
-
-                    CompassMeta meta = (CompassMeta) compass.getItemMeta();
-                    assert meta != null;
-                    meta.setItemName("Compass");
-                    meta.setLodestone(result);
-                    meta.setLodestoneTracked(false);
-                    compass.setItemMeta(meta);
-
-                    return STR."\{ChatColor.YELLOW}Updated Compass to Closest Nether Fortress";
-                }
+                setCompassTarget(p, trackedLocation.location());
             }
-        return STR."\{ChatColor.RED}How did you get here??";
+        }
+        return trackedLocation;
     }
 
-    public static TrackedLocation getLastKnownLocation(World world) {
+    public static void setCompassTarget(Player p, Location location) {
+        ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
+        World.Environment environment = Objects.requireNonNull(location.getWorld()).getEnvironment();
+
+        if (environment == World.Environment.NORMAL) {
+            p.setCompassTarget(runner.getLocation());
+        } else if (environment == World.Environment.NETHER) {
+            if (compass == null) return;
+            CompassMeta meta = (CompassMeta) compass.getItemMeta();
+            assert meta != null;
+            meta.setItemName("Compass");
+            meta.setLodestone(runner.getLocation());
+            meta.setLodestoneTracked(false);
+            compass.setItemMeta(meta);
+        }
+    }
+
+    public static TrackedLocation getRunnerLocation(World world) {
         boolean isOutdated = !runner.getWorld().equals(world);
         Location location = isOutdated ? lastKnownLocation.get(world) : runner.getLocation();
 
@@ -255,12 +232,22 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @EventHandler
     public void rightClickCompass(PlayerInteractEvent event) {
-        ItemStack item = event.getItem();
-        if (runner != null && item != null && isRightClick(event.getAction()) && item.getType() == Material.COMPASS) {
-            Player p = event.getPlayer();
+        Player p = event.getPlayer();
 
-            p.sendMessage(updateCompass(p));
+        if (runner != null && isRightClickOnCompass(event) && isHunter(p)) {
+            TrackedLocation location = updateHunterCompass(p);
+            if (location.exists() && !location.isOutdated()) {
+                p.sendMessage(STR."\{ChatColor.YELLOW}Updated Compass");
+            } else if (location.exists()) {
+                p.sendMessage(STR."\{ChatColor.YELLOW}Updated Compass to Last Known Location");
+            } else {
+                p.sendMessage(STR."\{ChatColor.RED}Speedrunner not found! Compass was not updated");
+            }
         }
+    }
+
+    public static boolean isRightClickOnCompass(PlayerInteractEvent event) {
+        return event.getItem() != null && isRightClick(event.getAction()) && event.getItem().getType() == Material.COMPASS;
     }
 
     @EventHandler

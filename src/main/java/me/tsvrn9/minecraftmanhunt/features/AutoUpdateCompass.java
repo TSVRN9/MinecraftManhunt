@@ -13,7 +13,7 @@ public class AutoUpdateCompass implements Feature {
     private final BukkitRunnable task = new BukkitRunnable() {
         @Override
         public void run() {
-            Bukkit.getOnlinePlayers().forEach(MinecraftManhunt::updateCompass);
+            Bukkit.getOnlinePlayers().forEach(MinecraftManhunt::updateHunterCompass);
         }
     };
 
