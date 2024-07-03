@@ -15,6 +15,8 @@ public interface Feature {
         return null;
     }
 
+    default boolean enabledByDefault() { return false; }
+
     /**
      * This represents the yaml value where all configuration values for this feature will lie
      */
