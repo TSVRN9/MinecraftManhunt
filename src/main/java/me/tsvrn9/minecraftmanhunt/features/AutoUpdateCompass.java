@@ -31,4 +31,9 @@ public class AutoUpdateCompass implements Feature {
     public void onDisable(Plugin plugin) {
         task.cancel();
     }
+
+    @Override
+    public boolean enabledByDefault() {
+        return true;
+    }
 }

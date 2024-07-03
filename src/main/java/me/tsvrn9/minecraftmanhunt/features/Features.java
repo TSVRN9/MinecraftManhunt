@@ -11,6 +11,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.ConfigurationSerialization;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -35,7 +36,9 @@ public class Features implements CommandExecutor, TabCompleter {
             new BuffRodDropRate(),
             new PreventBoringDeaths(),
             new AutoUpdateCompass(),
-            new RunnerFortressTracking()
+            new RunnerFortressTracking(),
+            new OPHunterGear(),
+            new Timer()
     );
 
     static {
@@ -66,8 +69,10 @@ public class Features implements CommandExecutor, TabCompleter {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
-            if (section == null || section.getBoolean("enabled")) {
+            if ((section == null && feature.enabledByDefault()) || (section != null && section.getBoolean("enabled"))) {
                 enable(feature, plugin);
+            } else {
+                isEnabled.put(feature, false);
             }
         }
     }
@@ -132,19 +137,15 @@ public class Features implements CommandExecutor, TabCompleter {
         }
 
         feature.onEnable(plugin);
-
         isEnabled.put(feature, true);
     }
 
     public static void disable(Feature feature, JavaPlugin plugin) {
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(feature.getPath());
-
-        if (section == null) {
-            section = plugin.getConfig().createSection(feature.getPath());
-        }
-
-
         feature.onDisable(plugin);
+
+        if (feature instanceof Listener listener) {
+            HandlerList.unregisterAll(listener);
+        }
 
         isEnabled.put(feature, false);
     }

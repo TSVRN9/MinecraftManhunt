@@ -25,4 +25,9 @@ public class BuffRodDropRate implements Feature, Listener {
                 event.getDrops().add(new ItemStack(Material.BLAZE_ROD));
         }
     }
+
+    @Override
+    public boolean enabledByDefault() {
+        return true;
+    }
 }

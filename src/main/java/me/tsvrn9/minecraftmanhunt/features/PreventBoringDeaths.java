@@ -63,4 +63,9 @@ public class PreventBoringDeaths implements Feature, Listener {
     public String getPath() {
         return "prevent_boring_deaths";
     }
+
+    @Override
+    public boolean enabledByDefault() {
+        return true;
+    }
 }

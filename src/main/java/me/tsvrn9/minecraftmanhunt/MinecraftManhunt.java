@@ -26,15 +26,16 @@ import java.util.stream.Stream;
 import static java.lang.StringTemplate.STR;
 
 public final class MinecraftManhunt extends JavaPlugin implements Listener {
+    public static final List<String> REMOVE_ON_DEATH_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
+
     private static ItemStack compass;
-    private static List<ItemStack> opArmor;
-    private static ItemStack opAxe;
-    private static final List<String> OP_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
-
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
-
     private static Player runner = null;
-    private static boolean opgear = false;
+
+    public static List<ItemStack> hunterArmor = new ArrayList<>();
+    public static List<ItemStack> hunterItems = new ArrayList<>();
+    public static List<ItemStack> runnerArmor = new ArrayList<>();
+    public static List<ItemStack> runnerItems = new ArrayList<>();
 
     @Override
     public void onEnable() {
@@ -46,33 +47,10 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         assert compassMeta != null;
         compassMeta.addEnchant(Enchantment.UNBREAKING, 1, true);
         compassMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        compassMeta.setLore(REMOVE_ON_DEATH_LORE);
         compass.setItemMeta(compassMeta);
 
-        List<ItemStack> opArmor = Stream.of(
-                        Material.DIAMOND_BOOTS,
-                        Material.DIAMOND_LEGGINGS,
-                        Material.DIAMOND_CHESTPLATE,
-                        Material.DIAMOND_HELMET
-                )
-                .map(ItemStack::new)
-                .peek(i -> {
-                    i.addEnchantment(Enchantment.PROTECTION, 4);
-                    i.addEnchantment(Enchantment.UNBREAKING, 3);
-                    ItemMeta meta = i.getItemMeta();
-                    assert meta != null;
-                    meta.setLore(OP_LORE);
-                    i.setItemMeta(meta);
-                })
-                .toList();
-
-        ItemStack opAxe = new ItemStack(Material.DIAMOND_AXE);
-        opAxe.addEnchantment(Enchantment.SHARPNESS, 1);
-        opAxe.addEnchantment(Enchantment.UNBREAKING, 3);
-
         MinecraftManhunt.compass = compass;
-        MinecraftManhunt.opArmor = opArmor;
-        MinecraftManhunt.opAxe = opAxe;
-
     }
 
     @Override
@@ -119,7 +97,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                     }
 
                     runner = player;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
+                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
                 case "setting" -> {
 
@@ -165,6 +143,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
             p.setHealth(0);
         });
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancement revoke @a everything");
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "weather set clear");
         world.setTime(1000);
     }
 
@@ -173,12 +152,18 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public static Player getRunner() { return runner; }
 
     public static void giveHunterGear(Player p) {
-        if (opgear) {
-            ItemStack[] armor = opArmor.toArray(new ItemStack[0]);
-            p.getInventory().setArmorContents(armor);
-            p.getInventory().addItem(opAxe);
-        }
         p.getInventory().addItem(compass);
+        p.getInventory().addItem(hunterItems.toArray(new ItemStack[0]));
+        if (!hunterArmor.isEmpty()) {
+            p.getInventory().setArmorContents(hunterArmor.toArray(new ItemStack[0]));
+        }
+    }
+
+    public static void giveRunnerGear(Player p) {
+        p.getInventory().addItem(runnerItems.toArray(new ItemStack[0]));
+        if (!runnerArmor.isEmpty()) {
+            p.getInventory().setArmorContents(runnerArmor.toArray(new ItemStack[0]));
+        }
     }
 
     public static boolean isRightClick(Action action) {
@@ -189,6 +174,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         Bukkit.getOnlinePlayers().stream()
                 .filter(MinecraftManhunt::isHunter)
                 .forEach(MinecraftManhunt::giveHunterGear);
+        giveRunnerGear(runner);
     }
 
     public static TrackedLocation updateHunterCompass(Player p) {
@@ -260,16 +246,13 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
-        event.getDrops().remove(compass);
-        if (opgear) {
-            List<ItemStack> toRemove = new ArrayList<>();
-            for (ItemStack drop : event.getDrops()) {
-                if (OP_LORE.equals(Objects.requireNonNull(drop.getItemMeta()).getLore())) {
-                    toRemove.add(drop);
-                }
+        List<ItemStack> toRemove = new ArrayList<>();
+        for (ItemStack drop : event.getDrops()) {
+            if (REMOVE_ON_DEATH_LORE.equals(Objects.requireNonNull(drop.getItemMeta()).getLore())) {
+                toRemove.add(drop);
             }
-            event.getDrops().removeAll(toRemove);
         }
+        event.getDrops().removeAll(toRemove);
     }
 
     @EventHandler
@@ -277,6 +260,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         if (isHunter(player)) {
             giveHunterGear(player);
+        } else { // isRunner(player)
+            giveRunnerGear(player);
         }
     }
 }

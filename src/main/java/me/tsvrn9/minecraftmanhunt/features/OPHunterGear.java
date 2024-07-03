@@ -1,0 +1,62 @@
+package me.tsvrn9.minecraftmanhunt.features;
+
+import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
+import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
+
+import java.util.List;
+import java.util.stream.Stream;
+
+public class OPHunterGear implements Feature {
+    @ConfigValue("armor")
+    private List<ItemStack> opArmor = Stream.of(
+                    Material.DIAMOND_BOOTS,
+                    Material.DIAMOND_LEGGINGS,
+                    Material.DIAMOND_CHESTPLATE,
+                    Material.DIAMOND_HELMET
+            )
+            .map(ItemStack::new)
+            .peek(i -> {
+                i.addEnchantment(Enchantment.PROTECTION, 4);
+                i.addEnchantment(Enchantment.UNBREAKING, 3);
+            })
+            .toList();
+
+    @ConfigValue("items")
+    private List<ItemStack> items = defaultItems();
+
+    private static List<ItemStack> defaultItems() {
+        ItemStack axe = new ItemStack(Material.DIAMOND_AXE);
+        axe.addEnchantment(Enchantment.EFFICIENCY, 1);
+        axe.addEnchantment(Enchantment.UNBREAKING, 3);
+        return List.of(axe);
+    }
+
+    @Override
+    public void onEnable(Plugin plugin) {
+        for (ItemStack item : Stream.concat(opArmor.stream(), items.stream()).toList()) {
+            ItemMeta meta = item.getItemMeta();
+            assert meta != null;
+            meta.setLore(MinecraftManhunt.REMOVE_ON_DEATH_LORE);
+            item.setItemMeta(meta);
+        }
+
+        MinecraftManhunt.hunterArmor = this.opArmor; // should be fine
+        MinecraftManhunt.hunterItems.addAll(this.items);
+    }
+
+    @Override
+    public void onDisable(Plugin plugin) {
+        MinecraftManhunt.hunterArmor.clear(); // should be fine
+        MinecraftManhunt.hunterItems.removeAll(this.items);
+    }
+
+    @Override
+    public String getPath() {
+        return "give_op_hunter_gear";
+    }
+}

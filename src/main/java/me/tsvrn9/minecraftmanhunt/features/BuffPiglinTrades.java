@@ -22,4 +22,9 @@ public class BuffPiglinTrades implements Feature, Listener {
             event.getOutcome().add(new ItemStack(Material.ENDER_PEARL, (int) Math.ceil(Math.random() * 2)));
         }
     }
+
+    @Override
+    public boolean enabledByDefault() {
+        return true;
+    }
 }
