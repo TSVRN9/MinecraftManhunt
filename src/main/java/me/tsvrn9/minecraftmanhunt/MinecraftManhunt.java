@@ -21,6 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
@@ -30,7 +31,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     private static ItemStack compass;
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
-    private static Player runner = null;
+    private static Set<Player> runners = Set.of();
 
     public static List<ItemStack> hunterArmor = new ArrayList<>();
     public static List<ItemStack> hunterItems = new ArrayList<>();
@@ -60,18 +61,9 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return switch (args.length) {
-            case 1 -> Stream.of("speedrunner", "opgear", "runnerbuffs", "hunterbuffs", "giveitems", "reset", "private")
-                    .filter(s -> s.startsWith(args[0])).toList();
-            case 2 -> {
-                if (args[0].equalsIgnoreCase("speedrunner")) {
-                    yield null;
-                } else {
-                    yield List.of();
-                }
-            }
-            default -> List.of();
-        };
+
+        if (args.length > 1 && args[0].equalsIgnoreCase("speedrunner")) return null;
+        return List.of();
     }
 
     @Override
@@ -84,19 +76,19 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
             switch (args[0].toLowerCase()) {
                 case "speedrunner" -> {
-                    Player player = Bukkit.getPlayer(args[1]);
+                    List<String> names = Arrays.asList(args);
+                    Set<Player> players = names.subList(1, names.size()).stream()
+                            .map(Bukkit::getPlayer)
+                            .collect(Collectors.toSet());
 
-                    if (player == null) {
-                        sender.sendMessage(STR."\{ChatColor.RED}Player not found!");
+                    if (players.isEmpty()) {
                         return false;
                     }
 
-                    if (runner == null) {
-                        // first chosen, so we set-up all of our features here
+                    if (runners.isEmpty()) {
                         Features.load(this);
                     }
 
-                    runner = player;
                     Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
                 case "setting" -> {
