@@ -5,8 +5,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 public class ConfigurableLoader {
     private static final Map<Class<?>, BiFunction<ConfigurationSection, String, Object>> typeHandlers = new HashMap<>();
@@ -23,8 +21,11 @@ public class ConfigurableLoader {
         typeHandlers.put(Map.class, (section, key) -> {
             HashMap<Object, Object> hashMap = new HashMap<>();
             ConfigurationSection configurationMap = section.getConfigurationSection(key);
-            assert configurationMap != null;
-            configurationMap.getKeys(false).forEach(k -> hashMap.put(k, configurationMap.get(k)));
+            if (configurationMap != null) {
+                configurationMap.getKeys(false).forEach(k -> hashMap.put(k, configurationMap.get(k)));
+            } else {
+                hashMap.putAll((Map<?, ?>) section.get(key));
+            }
             return hashMap;
         });
     }
@@ -42,11 +43,14 @@ public class ConfigurableLoader {
 
                     Class<?> clazz = field.getType();
                     String key = configValue.value();
-                    Object value = typeHandlers.containsKey(clazz) && keys.contains(key)
-                            ? typeHandlers.get(clazz).apply(section, key)
-                            : section.getObject(key, clazz);
 
-                    field.set(feature, value);
+                    if (keys.contains(key)) {
+                        Object value = typeHandlers.containsKey(clazz)
+                                ? typeHandlers.get(clazz).apply(section, key)
+                                : section.getObject(key, clazz);
+
+                        field.set(feature, value);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

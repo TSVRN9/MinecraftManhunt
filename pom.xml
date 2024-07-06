@@ -45,6 +45,9 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.0.0</version>
+          <configuration>
+              <argLine>--enable-preview</argLine>
+          </configuration>
       </plugin>
     </plugins>
     <resources>
@@ -83,13 +86,13 @@
       </dependency>
       <!--
       MockBukkit isn't out for 1.21 yet... :( :(
-      -->
       <dependency>
           <groupId>com.github.seeseemelk</groupId>
           <artifactId>MockBukkit-v1.20</artifactId>
           <version>3.9.0</version>
           <scope>test</scope>
       </dependency>
+      -->
       <dependency>
           <groupId>org.junit.jupiter</groupId>
           <artifactId>junit-jupiter-engine</artifactId>
