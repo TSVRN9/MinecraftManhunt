@@ -31,7 +31,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     private static ItemStack compass;
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
-    private static Set<Player> runners = Set.of();
+    private static Player runner = null;
 
     public static List<ItemStack> hunterArmor = new ArrayList<>();
     public static List<ItemStack> hunterItems = new ArrayList<>();
@@ -76,19 +76,18 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
             switch (args[0].toLowerCase()) {
                 case "speedrunner" -> {
-                    List<String> names = Arrays.asList(args);
-                    Set<Player> players = names.subList(1, names.size()).stream()
-                            .map(Bukkit::getPlayer)
-                            .collect(Collectors.toSet());
+                    Player player = Bukkit.getPlayer(args[0]);
 
-                    if (players.isEmpty()) {
+                    if (player == null) {
+                        sender.sendMessage(STR."\{ChatColor.RED}Player not found!");
                         return false;
                     }
 
-                    if (runners.isEmpty()) {
+                    if (runner == null) {
                         Features.load(this);
                     }
 
+                    runner = player;
                     Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
                 case "setting" -> {
