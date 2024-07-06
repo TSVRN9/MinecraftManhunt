@@ -1,5 +1,6 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
+import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -15,19 +16,35 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class Features implements CommandExecutor, TabCompleter {
     private Features() {}
 
     private static final Features SINGLETON = new Features();
+
     private static final Map<String, Feature> pathToFeature = new HashMap<>();
     private static final Map<String, Feature> commandRegistry = new HashMap<>();
     private static final Map<String, Feature> tabRegistry = new HashMap<>();
     private static final Map<Feature, Boolean> isEnabled = new HashMap<>();
+    private static final Map<Class<?>, Function<String, Object>> stringToObjectHandlers = new HashMap<>();
+
+    static {
+        stringToObjectHandlers.put(int.class, Integer::parseInt);
+        stringToObjectHandlers.put(double.class, Double::parseDouble);
+        stringToObjectHandlers.put(boolean.class, Boolean::parseBoolean);
+        stringToObjectHandlers.put(long.class, Long::parseLong);
+        stringToObjectHandlers.put(float.class, Float::parseFloat);
+        stringToObjectHandlers.put(byte.class, Byte::parseByte);
+        stringToObjectHandlers.put(short.class, Short::parseShort);
+        stringToObjectHandlers.put(char.class, s -> s.charAt(0));
+        stringToObjectHandlers.put(String.class, s -> s);
+    }
 
     public static final List<Feature> FEATURES = List.of(
             new PrivateChat(),
@@ -154,6 +171,45 @@ public class Features implements CommandExecutor, TabCompleter {
         return pathToFeature.get(path);
     }
 
+    public static boolean setValue(String path, String value, JavaPlugin plugin) {
+        if (path.indexOf('.') == -1) return false;
+        String featurePath = path.substring(0, path.indexOf('.'));
+        String valuePath = path.substring(path.indexOf('.') + 1);
+        Feature feature = getFeature(featurePath);
+
+        if (feature == null) return false;
+
+        Class<? extends Feature> cls = feature.getClass();
+        for (Field field : cls.getFields()) {
+            if (field.isAnnotationPresent(ConfigValue.class)) {
+                try {
+                    field.setAccessible(true);
+                    ConfigValue configValue = field.getAnnotation(ConfigValue.class);
+                    String key = configValue.value();
+
+                    if (key.equals(valuePath)) {
+                        if (stringToObjectHandlers.containsKey(field.getType())) { // only support primitives && strings
+                            if (isEnabled.get(feature)) {
+                                feature.onDisable(plugin);
+                            }
+                            Object newValue = stringToObjectHandlers.get(field.getType()).apply(value);
+                            field.set(feature, newValue);
+                            if (isEnabled.get(feature)) {
+                                feature.onEnable(plugin);
+                            }
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String commandName = command.getName().toLowerCase();
@@ -195,6 +251,5 @@ public class Features implements CommandExecutor, TabCompleter {
         } else {
             throw new IllegalStateException("Tab registry doesn't contain this command, yet onTabComplete ran?");
         }
-
     }
 }

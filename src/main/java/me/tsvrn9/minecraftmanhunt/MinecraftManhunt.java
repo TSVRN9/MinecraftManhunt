@@ -1,9 +1,11 @@
 package me.tsvrn9.minecraftmanhunt;
 
+import me.tsvrn9.minecraftmanhunt.features.Feature;
 import me.tsvrn9.minecraftmanhunt.features.Features;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,7 +23,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
@@ -61,9 +62,28 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        return switch (args.length) {
+            case 1 -> {
+                String input = args[0].toLowerCase();
+                // subcommands
+                yield complete(input, "speedrunner", "settings", "save", "reload", "reset");
+            }
+            case 2 -> switch (args[0].toLowerCase()) {
+                case "speedrunner" ->
+                        complete(args[1], (String[]) Bukkit.getOnlinePlayers().stream().map(Player::getName).toArray());
+                case "settings" -> {
+                    // TODO
+                }
+                default -> List.of();
+            };
+            default -> List.of();
+        };
+    }
 
-        if (args.length > 1 && args[0].equalsIgnoreCase("speedrunner")) return null;
-        return List.of();
+    private static List<String> complete(String input, String... possibleCompletions) {
+        return Stream.of(possibleCompletions)
+                .filter(s -> s.startsWith(input))
+                .toList();
     }
 
     @Override
@@ -90,12 +110,32 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                     runner = player;
                     Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
-                case "setting" -> {
+                case "settings" -> {
+                    FileConfiguration config = getConfig();
+                    switch (args.length) {
+                        case 1 -> {
+                            String path = args[0];
+                            Object value = config.get(path);
+                            sender.sendMessage(STR."\"\{path}\"'s value: \{value}");
+                        }
+                        case 2 -> {
+                            String path = args[0];
+                            String value = args[1];
+                            boolean success = Features.setValue(path, value, this);
 
+                            if (success) {
+                                sender.sendMessage(STR."\{ChatColor.GREEN}Value updated!");
+                            } else {
+                                sender.sendMessage(STR."\{ChatColor.RED}Could not update value!");
+                                return false;
+                            }
+                        }
+                        default -> {
+                            return false;
+                        }
+                    }
                 }
-                case "save" -> {
-                    saveConfig();
-                }
+                case "save" -> saveConfig();
                 case "reload" -> {
                     reloadConfig();
                     Features.disableAll(this);
