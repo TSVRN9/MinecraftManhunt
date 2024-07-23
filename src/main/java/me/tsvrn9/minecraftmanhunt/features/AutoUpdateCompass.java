@@ -29,7 +29,8 @@ public class AutoUpdateCompass implements Feature {
 
     @Override
     public void onDisable(Plugin plugin) {
-        task.cancel();
+        if (!task.isCancelled())
+            task.cancel();
     }
 
     @Override

@@ -69,7 +69,8 @@ public class HunterSpeedBuff implements Feature, Listener {
 
     @Override
     public void onDisable(Plugin plugin) {
-       bukkitRunnable.cancel();
+        if (!bukkitRunnable.isCancelled())
+            bukkitRunnable.cancel();
     }
 
     @Override

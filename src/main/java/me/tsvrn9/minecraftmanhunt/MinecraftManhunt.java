@@ -1,6 +1,5 @@
 package me.tsvrn9.minecraftmanhunt;
 
-import me.tsvrn9.minecraftmanhunt.features.Feature;
 import me.tsvrn9.minecraftmanhunt.features.Features;
 import org.bukkit.*;
 import org.bukkit.command.Command;
@@ -57,7 +56,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        Features.save(this);
+        Features.saveAll(this);
+        Features.disableAll(this);
     }
 
     @Override
@@ -70,10 +70,9 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
             }
             case 2 -> switch (args[0].toLowerCase()) {
                 case "speedrunner" ->
-                        complete(args[1], (String[]) Bukkit.getOnlinePlayers().stream().map(Player::getName).toArray());
-                case "settings" -> {
-                    // TODO
-                }
+                        complete(args[1], Bukkit.getOnlinePlayers().stream().map(Player::getName).toArray(String[]::new));
+                case "settings" -> // TODO pushed to 3.0
+                        List.of();
                 default -> List.of();
             };
             default -> List.of();
@@ -96,7 +95,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
             switch (args[0].toLowerCase()) {
                 case "speedrunner" -> {
-                    Player player = Bukkit.getPlayer(args[0]);
+                    if (args.length == 1) return false;
+                    Player player = Bukkit.getPlayer(args[1]);
 
                     if (player == null) {
                         sender.sendMessage(STR."\{ChatColor.RED}Player not found!");
@@ -104,7 +104,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                     }
 
                     if (runner == null) {
-                        Features.load(this);
+                        Features.loadAll(this);
                     }
 
                     runner = player;
@@ -137,8 +137,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
                 case "save" -> saveConfig();
                 case "reload" -> {
-                    reloadConfig();
                     Features.disableAll(this);
+                    reloadConfig();
                     Features.enableAll(this);
                 }
                 case "reset" -> reset();
@@ -279,7 +279,14 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         List<ItemStack> toRemove = new ArrayList<>();
         for (ItemStack drop : event.getDrops()) {
-            if (REMOVE_ON_DEATH_LORE.equals(Objects.requireNonNull(drop.getItemMeta()).getLore())) {
+            List<String> lore = Objects.requireNonNull(drop.getItemMeta()).getLore();
+
+            if (lore == null || lore.isEmpty()) continue;
+
+            String marker = REMOVE_ON_DEATH_LORE.getFirst();
+            String first = lore.getFirst();
+
+            if (marker.equals(first)) {
                 toRemove.add(drop);
             }
         }

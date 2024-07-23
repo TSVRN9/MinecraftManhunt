@@ -62,6 +62,7 @@ public class Features implements CommandExecutor, TabCompleter {
         // init pathToFeature map
         for (Feature feature : FEATURES) {
             pathToFeature.put(feature.getPath(), feature);
+            isEnabled.put(feature, false);
         }
     }
 
@@ -82,7 +83,7 @@ public class Features implements CommandExecutor, TabCompleter {
         }
     }
 
-    public static void load(JavaPlugin plugin) {
+    public static void loadAll(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
@@ -94,15 +95,15 @@ public class Features implements CommandExecutor, TabCompleter {
         }
     }
 
-    public static void save(JavaPlugin plugin) {
+    public static void saveAll(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : FEATURES) {
-            boolean wasEnabled = isEnabled.get(feature);
-            disable(feature, plugin);
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+            if (section == null) {
+                section = config.createSection(feature.getPath());
+            }
             ConfigurableLoader.save(feature, section);
-            assert section != null;
-            section.set("enabled", wasEnabled);
+            section.set("enabled", isEnabled.get(feature));
         }
         plugin.saveConfig();
     }
@@ -116,6 +117,12 @@ public class Features implements CommandExecutor, TabCompleter {
     public static void disableAll(JavaPlugin plugin) {
         for (Feature feature : FEATURES) {
             disable(feature, plugin);
+        }
+    }
+
+    public static void reloadAll(JavaPlugin plugin) {
+        for (Feature feature : FEATURES) {
+            reload(feature, plugin);
         }
     }
 
@@ -165,6 +172,14 @@ public class Features implements CommandExecutor, TabCompleter {
         }
 
         isEnabled.put(feature, false);
+    }
+
+    public static void reload(Feature feature, JavaPlugin plugin) {
+        boolean wasEnabled = isEnabled.get(feature);
+        disable(feature, plugin);
+
+        if (wasEnabled)
+            enable(feature, plugin);
     }
 
     public static Feature getFeature(String path) {
