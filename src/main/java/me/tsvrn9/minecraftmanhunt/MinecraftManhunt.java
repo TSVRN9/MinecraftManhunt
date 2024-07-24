@@ -1,6 +1,7 @@
 package me.tsvrn9.minecraftmanhunt;
 
-import me.tsvrn9.minecraftmanhunt.features.Features;
+import me.tsvrn9.minecraftmanhunt.features.*;
+import me.tsvrn9.minecraftmanhunt.features.Timer;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -29,6 +30,19 @@ import static java.lang.StringTemplate.STR;
 public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public static final List<String> REMOVE_ON_DEATH_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
 
+    private static FeatureRegistry featureRegistry = new FeatureRegistry(
+            List.of(
+                new PrivateChat(),
+                new HunterSpeedBuff(),
+                new BuffPiglinTrades(),
+                new BuffRodDropRate(),
+                new PreventBoringDeaths(),
+                new AutoUpdateCompass(),
+                new RunnerFortressTracking(),
+                new OPHunterGear(),
+                new Timer()
+            )
+    );
     private static ItemStack compass;
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
     private static Player runner = null;
@@ -41,7 +55,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
-        Features.registerConfigurationSerializables();
+        featureRegistry.registerConfigurationSerializables();
 
         ItemStack compass = new ItemStack(Material.COMPASS);
         ItemMeta compassMeta = compass.getItemMeta();
@@ -56,8 +70,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        Features.saveAll(this);
-        Features.disableAll(this);
+        featureRegistry.saveAll(this);
+        featureRegistry.disableAll(this);
     }
 
     @Override
@@ -104,7 +118,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                     }
 
                     if (runner == null) {
-                        Features.loadAll(this);
+                        featureRegistry.loadAll(this);
                     }
 
                     runner = player;
@@ -121,7 +135,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                         case 2 -> {
                             String path = args[0];
                             String value = args[1];
-                            boolean success = Features.setValue(path, value, this);
+                            boolean success = featureRegistry.setValue(path, value, this);
 
                             if (success) {
                                 sender.sendMessage(STR."\{ChatColor.GREEN}Value updated!");
@@ -137,9 +151,9 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
                 case "save" -> saveConfig();
                 case "reload" -> {
-                    Features.disableAll(this);
+                    featureRegistry.disableAll(this);
                     reloadConfig();
-                    Features.enableAll(this);
+                    featureRegistry.enableAll(this);
                 }
                 case "reset" -> reset();
                 default -> {

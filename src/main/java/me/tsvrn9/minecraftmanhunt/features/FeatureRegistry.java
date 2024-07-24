@@ -23,16 +23,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-public class Features implements CommandExecutor, TabCompleter {
-    private Features() {}
-
-    private static final Features SINGLETON = new Features();
-
-    private static final Map<String, Feature> pathToFeature = new HashMap<>();
-    private static final Map<String, Feature> commandRegistry = new HashMap<>();
-    private static final Map<String, Feature> tabRegistry = new HashMap<>();
-    private static final Map<Feature, Boolean> isEnabled = new HashMap<>();
+public class FeatureRegistry implements CommandExecutor, TabCompleter {
     private static final Map<Class<?>, Function<String, Object>> stringToObjectHandlers = new HashMap<>();
+
+    protected final Map<String, Feature> pathToFeature = new HashMap<>();
+    protected final Map<String, Feature> commandRegistry = new HashMap<>();
+    protected final Map<String, Feature> tabRegistry = new HashMap<>();
+    protected final Map<Feature, Boolean> isEnabled = new HashMap<>();
+
+    public final List<Feature> features;
 
     static {
         stringToObjectHandlers.put(int.class, Integer::parseInt);
@@ -46,28 +45,17 @@ public class Features implements CommandExecutor, TabCompleter {
         stringToObjectHandlers.put(String.class, s -> s);
     }
 
-    public static final List<Feature> FEATURES = List.of(
-            new PrivateChat(),
-            new HunterSpeedBuff(),
-            new BuffPiglinTrades(),
-            new BuffRodDropRate(),
-            new PreventBoringDeaths(),
-            new AutoUpdateCompass(),
-            new RunnerFortressTracking(),
-            new OPHunterGear(),
-            new Timer()
-    );
-
-    static {
+    public FeatureRegistry(List<Feature> features) {
         // init pathToFeature map
-        for (Feature feature : FEATURES) {
+        for (Feature feature : features) {
             pathToFeature.put(feature.getPath(), feature);
             isEnabled.put(feature, false);
         }
+        this.features = features;
     }
 
-    public static void registerConfigurationSerializables() {
-        for (Feature feature : FEATURES) {
+    public void registerConfigurationSerializables() {
+        for (Feature feature : features) {
             Class<?>[] serializables = feature.getConfigurationSerializables();
             if (serializables != null) {
                 for (Class<?> serializable : serializables) {
@@ -83,9 +71,9 @@ public class Features implements CommandExecutor, TabCompleter {
         }
     }
 
-    public static void loadAll(JavaPlugin plugin) {
+    public void loadAll(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
-        for (Feature feature : FEATURES) {
+        for (Feature feature : features) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
             if ((section == null && feature.enabledByDefault()) || (section != null && section.getBoolean("enabled"))) {
                 enable(feature, plugin);
@@ -95,9 +83,9 @@ public class Features implements CommandExecutor, TabCompleter {
         }
     }
 
-    public static void saveAll(JavaPlugin plugin) {
+    public void saveAll(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
-        for (Feature feature : FEATURES) {
+        for (Feature feature : features) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
             if (section == null) {
                 section = config.createSection(feature.getPath());
@@ -108,25 +96,25 @@ public class Features implements CommandExecutor, TabCompleter {
         plugin.saveConfig();
     }
 
-    public static void enableAll(JavaPlugin plugin) {
-        for (Feature feature : FEATURES) {
+    public void enableAll(JavaPlugin plugin) {
+        for (Feature feature : features) {
             enable(feature, plugin);
         }
     }
 
-    public static void disableAll(JavaPlugin plugin) {
-        for (Feature feature : FEATURES) {
+    public void disableAll(JavaPlugin plugin) {
+        for (Feature feature : features) {
             disable(feature, plugin);
         }
     }
 
-    public static void reloadAll(JavaPlugin plugin) {
-        for (Feature feature : FEATURES) {
+    public void reloadAll(JavaPlugin plugin) {
+        for (Feature feature : features) {
             reload(feature, plugin);
         }
     }
 
-    public static void enable(Feature feature, JavaPlugin plugin) {
+    public void enable(Feature feature, JavaPlugin plugin) {
         ConfigurationSection section = plugin.getConfig().getConfigurationSection(feature.getPath());
 
         if (section != null) {
@@ -139,7 +127,7 @@ public class Features implements CommandExecutor, TabCompleter {
             if (feature instanceof CommandExecutor) {
                 for (String command : handledCommands) {
                     command = command.toLowerCase();
-                    Objects.requireNonNull(plugin.getCommand(command)).setExecutor(SINGLETON);
+                    Objects.requireNonNull(plugin.getCommand(command)).setExecutor(this);
                     commandRegistry.put(command, feature);
                 }
             } else {
@@ -150,7 +138,7 @@ public class Features implements CommandExecutor, TabCompleter {
             if (feature instanceof TabCompleter) {
                 for (String command : handledCommands) {
                     command = command.toLowerCase();
-                    Objects.requireNonNull(plugin.getCommand(command)).setTabCompleter(SINGLETON);
+                    Objects.requireNonNull(plugin.getCommand(command)).setTabCompleter(this);
                     tabRegistry.put(command, feature);
                 }
             }
@@ -164,7 +152,7 @@ public class Features implements CommandExecutor, TabCompleter {
         isEnabled.put(feature, true);
     }
 
-    public static void disable(Feature feature, JavaPlugin plugin) {
+    public void disable(Feature feature, JavaPlugin plugin) {
         feature.onDisable(plugin);
 
         if (feature instanceof Listener listener) {
@@ -174,7 +162,7 @@ public class Features implements CommandExecutor, TabCompleter {
         isEnabled.put(feature, false);
     }
 
-    public static void reload(Feature feature, JavaPlugin plugin) {
+    public void reload(Feature feature, JavaPlugin plugin) {
         boolean wasEnabled = isEnabled.get(feature);
         disable(feature, plugin);
 
@@ -182,11 +170,11 @@ public class Features implements CommandExecutor, TabCompleter {
             enable(feature, plugin);
     }
 
-    public static Feature getFeature(String path) {
+    public Feature getFeature(String path) {
         return pathToFeature.get(path);
     }
 
-    public static boolean setValue(String path, String value, JavaPlugin plugin) {
+    public boolean setValue(String path, String value, JavaPlugin plugin) {
         if (path.indexOf('.') == -1) return false;
         String featurePath = path.substring(0, path.indexOf('.'));
         String valuePath = path.substring(path.indexOf('.') + 1);
