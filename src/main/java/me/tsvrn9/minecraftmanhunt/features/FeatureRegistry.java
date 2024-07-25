@@ -31,7 +31,9 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     protected final Map<String, Feature> tabRegistry = new HashMap<>();
     protected final Map<Feature, Boolean> isEnabled = new HashMap<>();
 
-    public final List<Feature> features;
+    protected final JavaPlugin plugin;
+    protected ConfigurationSection config;
+    protected final List<Feature> features;
 
     static {
         stringToObjectHandlers.put(int.class, Integer::parseInt);
@@ -45,13 +47,21 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         stringToObjectHandlers.put(String.class, s -> s);
     }
 
-    public FeatureRegistry(List<Feature> features) {
+    public FeatureRegistry(JavaPlugin plugin, List<Feature> features) {
+        this.plugin = plugin;
         // init pathToFeature map
         for (Feature feature : features) {
             pathToFeature.put(feature.getPath(), feature);
             isEnabled.put(feature, false);
         }
         this.features = features;
+
+        registerConfigurationSerializables();
+    }
+
+    public FeatureRegistry setConfig(ConfigurationSection config) {
+        this.config = config;
+        return this;
     }
 
     public void registerConfigurationSerializables() {
@@ -71,19 +81,18 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         }
     }
 
-    public void loadAll(JavaPlugin plugin) {
-        FileConfiguration config = plugin.getConfig();
+    public void loadAll() {
         for (Feature feature : features) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
             if ((section == null && feature.enabledByDefault()) || (section != null && section.getBoolean("enabled"))) {
-                enable(feature, plugin);
+                enable(feature);
             } else {
                 isEnabled.put(feature, false);
             }
         }
     }
 
-    public void saveAll(JavaPlugin plugin) {
+    public void saveAll() {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : features) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
@@ -96,26 +105,26 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         plugin.saveConfig();
     }
 
-    public void enableAll(JavaPlugin plugin) {
+    public void enableAll() {
         for (Feature feature : features) {
-            enable(feature, plugin);
+            enable(feature);
         }
     }
 
-    public void disableAll(JavaPlugin plugin) {
+    public void disableAll() {
         for (Feature feature : features) {
-            disable(feature, plugin);
+            disable(feature);
         }
     }
 
-    public void reloadAll(JavaPlugin plugin) {
+    public void reloadAll() {
         for (Feature feature : features) {
-            reload(feature, plugin);
+            reload(feature);
         }
     }
 
-    public void enable(Feature feature, JavaPlugin plugin) {
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(feature.getPath());
+    public void enable(Feature feature) {
+        ConfigurationSection section = config.getConfigurationSection(feature.getPath());
 
         if (section != null) {
             ConfigurableLoader.load(feature, section);
@@ -152,7 +161,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         isEnabled.put(feature, true);
     }
 
-    public void disable(Feature feature, JavaPlugin plugin) {
+    public void disable(Feature feature) {
         feature.onDisable(plugin);
 
         if (feature instanceof Listener listener) {
@@ -162,19 +171,19 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         isEnabled.put(feature, false);
     }
 
-    public void reload(Feature feature, JavaPlugin plugin) {
+    public void reload(Feature feature) {
         boolean wasEnabled = isEnabled.get(feature);
-        disable(feature, plugin);
+        disable(feature);
 
         if (wasEnabled)
-            enable(feature, plugin);
+            enable(feature);
     }
 
     public Feature getFeature(String path) {
         return pathToFeature.get(path);
     }
 
-    public boolean setValue(String path, String value, JavaPlugin plugin) {
+    public boolean setValue(String path, String value) {
         if (path.indexOf('.') == -1) return false;
         String featurePath = path.substring(0, path.indexOf('.'));
         String valuePath = path.substring(path.indexOf('.') + 1);

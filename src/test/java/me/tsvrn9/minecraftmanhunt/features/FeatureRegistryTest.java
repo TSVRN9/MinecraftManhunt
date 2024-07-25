@@ -3,16 +3,13 @@ package me.tsvrn9.minecraftmanhunt.features;
 
 import be.seeseemelk.mockbukkit.MockBukkit;
 import be.seeseemelk.mockbukkit.ServerMock;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
+import org.bukkit.command.*;
 import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.SerializableAs;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,16 +28,30 @@ class FeatureRegistryTest {
     private JavaPlugin plugin;
     private FeatureRegistry featureRegistry;
     private Feature mockFeature;
+    private YamlConfiguration config;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException, InvalidConfigurationException {
         server = MockBukkit.mock();
-        plugin = MockBukkit.createMockPlugin();
-        mockFeature = mock(Feature.class);
+        plugin = MockBukkit.load(SomePlugin.class);
+        mockFeature = mock(Feature.class, withSettings().extraInterfaces(CommandExecutor.class, TabCompleter.class));
+        config = new YamlConfiguration();
+
+        File file = new File(plugin.getDataFolder(), "config.yml");
+
+        if (file.getParentFile() != null) {
+            file.getParentFile().mkdirs();
+        }
+        file.createNewFile();
+
+        config.load(file);
+
         when(mockFeature.getPath()).thenReturn("mockFeature");
-        when(mockFeature.getHandledCommands()).thenReturn(new String[]{"mockCommand"});
+        when(mockFeature.getHandledCommands()).thenReturn(new String[]{"mock_command"});
         when(mockFeature.enabledByDefault()).thenReturn(true);
-        featureRegistry = new FeatureRegistry(List.of(mockFeature));
+        when(((CommandExecutor) mockFeature).onCommand(any(), any(), any(), any())).thenReturn(true);
+
+        featureRegistry = new FeatureRegistry(plugin, List.of(mockFeature)).setConfig(config);
     }
 
     @AfterEach
@@ -61,12 +72,8 @@ class FeatureRegistryTest {
     }
 
     @Test
-    void testLoadAllFeatures() throws IOException, InvalidConfigurationException {
-        FileConfiguration config = new YamlConfiguration();
-        config.load(new File(plugin.getDataFolder(), "config.yml"));
-        when(plugin.getConfig()).thenReturn(config);
-
-        featureRegistry.loadAll(plugin);
+    void testLoadAllFeatures() {
+        featureRegistry.loadAll();
 
         boolean isEnabled = config.getConfigurationSection(mockFeature.getPath()).getBoolean("enabled");
         assertEquals(isEnabled, featureRegistry.isEnabled.get(mockFeature));
@@ -74,7 +81,7 @@ class FeatureRegistryTest {
 
     @Test
     void testEnableFeature() {
-        featureRegistry.enable(mockFeature, plugin);
+        featureRegistry.enable(mockFeature);
 
         verify(mockFeature).onEnable(plugin);
         assertTrue(featureRegistry.isEnabled.get(mockFeature));
@@ -82,8 +89,8 @@ class FeatureRegistryTest {
 
     @Test
     void testDisableFeature() {
-        featureRegistry.enable(mockFeature, plugin);
-        featureRegistry.disable(mockFeature, plugin);
+        featureRegistry.enable(mockFeature);
+        featureRegistry.disable(mockFeature);
 
         verify(mockFeature).onDisable(plugin);
         assertFalse(featureRegistry.isEnabled.get(mockFeature));
@@ -95,7 +102,7 @@ class FeatureRegistryTest {
         Command command = mock(Command.class);
         when(command.getName()).thenReturn("mockCommand");
 
-        featureRegistry.enable(mockFeature, plugin);
+        featureRegistry.enable(mockFeature);
 
         assertTrue(featureRegistry.onCommand(sender, command, "mockCommand", new String[0]));
         verify((CommandExecutor) mockFeature).onCommand(sender, command, "mockCommand", new String[0]);
@@ -107,13 +114,11 @@ class FeatureRegistryTest {
         Command command = mock(Command.class);
         when(command.getName()).thenReturn("mockCommand");
 
-        featureRegistry.enable(mockFeature, plugin);
+        featureRegistry.enable(mockFeature);
 
         featureRegistry.onTabComplete(sender, command, "mockCommand", new String[0]);
         verify((TabCompleter) mockFeature).onTabComplete(sender, command, "mockCommand", new String[0]);
     }
-
-
 
     @SerializableAs("MockSerializable")
     private static class MockSerializable implements ConfigurationSerializable {
@@ -123,14 +128,6 @@ class FeatureRegistryTest {
         public MockSerializable(String name, int value) {
             this.name = name;
             this.value = value;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public int getValue() {
-            return value;
         }
 
         @Override
