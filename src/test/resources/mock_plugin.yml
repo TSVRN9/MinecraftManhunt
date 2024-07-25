@@ -1,0 +1,7 @@
+name: MockPlugin
+version: 1.0
+api-version: 1.21
+main: does.not.matter
+
+commands:
+  mock_command:

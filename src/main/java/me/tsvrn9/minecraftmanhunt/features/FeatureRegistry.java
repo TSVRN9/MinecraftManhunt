@@ -55,8 +55,6 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
             isEnabled.put(feature, false);
         }
         this.features = features;
-
-        registerConfigurationSerializables();
     }
 
     public FeatureRegistry setConfig(ConfigurationSection config) {
@@ -84,10 +82,15 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     public void loadAll() {
         for (Feature feature : features) {
             ConfigurationSection section = config.getConfigurationSection(feature.getPath());
-            if ((section == null && feature.enabledByDefault()) || (section != null && section.getBoolean("enabled"))) {
+            boolean firstTimeLoaded = section == null;
+            if ((firstTimeLoaded && feature.enabledByDefault()) || (!firstTimeLoaded && section.getBoolean("enabled"))) {
                 enable(feature);
             } else {
                 isEnabled.put(feature, false);
+            }
+
+            if (firstTimeLoaded) {
+                save(feature);
             }
         }
     }
@@ -95,14 +98,18 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     public void saveAll() {
         FileConfiguration config = plugin.getConfig();
         for (Feature feature : features) {
-            ConfigurationSection section = config.getConfigurationSection(feature.getPath());
-            if (section == null) {
-                section = config.createSection(feature.getPath());
-            }
-            ConfigurableLoader.save(feature, section);
-            section.set("enabled", isEnabled.get(feature));
+            save(feature);
         }
         plugin.saveConfig();
+    }
+
+    public void save(Feature feature) {
+        ConfigurationSection section = config.getConfigurationSection(feature.getPath());
+        if (section == null) {
+            section = config.createSection(feature.getPath());
+        }
+        ConfigurableLoader.save(feature, section);
+        section.set("enabled", isEnabled.get(feature));
     }
 
     public void enableAll() {

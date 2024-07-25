@@ -54,9 +54,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         featureRegistry = new FeatureRegistry(this, features);
-
-        getServer().getPluginManager().registerEvents(this, this);
         featureRegistry.registerConfigurationSerializables();
+        getServer().getPluginManager().registerEvents(this, this);
 
         ItemStack compass = new ItemStack(Material.COMPASS);
         ItemMeta compassMeta = compass.getItemMeta();

@@ -2,20 +2,22 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
 import be.seeseemelk.mockbukkit.MockBukkit;
+import be.seeseemelk.mockbukkit.MockPlugin;
 import be.seeseemelk.mockbukkit.ServerMock;
 import org.bukkit.command.*;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.SerializableAs;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,7 @@ class FeatureRegistryTest {
     @BeforeEach
     void setUp() throws IOException, InvalidConfigurationException {
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(SomePlugin.class);
+        plugin = getMockPlugin();
         mockFeature = mock(Feature.class, withSettings().extraInterfaces(CommandExecutor.class, TabCompleter.class));
         config = new YamlConfiguration();
 
@@ -52,6 +54,18 @@ class FeatureRegistryTest {
         when(((CommandExecutor) mockFeature).onCommand(any(), any(), any(), any())).thenReturn(true);
 
         featureRegistry = new FeatureRegistry(plugin, List.of(mockFeature)).setConfig(config);
+    }
+
+    private JavaPlugin getMockPlugin() {
+        JavaPlugin plugin = null;
+        try (InputStream mockYaml = FeatureRegistryTest.class.getClassLoader().getResourceAsStream("mock_plugin.yml")) {
+            PluginDescriptionFile description = new PluginDescriptionFile(mockYaml);
+            plugin = server.getPluginManager().loadPlugin(MockPlugin.class, description, new Object[0]);
+            server.getPluginManager().enablePlugin(plugin);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return plugin;
     }
 
     @AfterEach
@@ -100,7 +114,7 @@ class FeatureRegistryTest {
     void testOnCommand() {
         CommandSender sender = mock(CommandSender.class);
         Command command = mock(Command.class);
-        when(command.getName()).thenReturn("mockCommand");
+        when(command.getName()).thenReturn("mock_command");
 
         featureRegistry.enable(mockFeature);
 
@@ -112,7 +126,7 @@ class FeatureRegistryTest {
     void testOnTabComplete() {
         CommandSender sender = mock(CommandSender.class);
         Command command = mock(Command.class);
-        when(command.getName()).thenReturn("mockCommand");
+        when(command.getName()).thenReturn("mock_command");
 
         featureRegistry.enable(mockFeature);
 
