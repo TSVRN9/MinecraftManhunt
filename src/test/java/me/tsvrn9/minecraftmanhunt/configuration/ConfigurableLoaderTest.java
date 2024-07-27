@@ -1,7 +1,5 @@
-package me.tsvrn9.minecraftmanhunt;
+package me.tsvrn9.minecraftmanhunt.configuration;
 
-import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
-import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.BeforeEach;

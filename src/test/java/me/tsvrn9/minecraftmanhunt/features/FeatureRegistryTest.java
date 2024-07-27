@@ -118,8 +118,8 @@ class FeatureRegistryTest {
 
         featureRegistry.enable(mockFeature);
 
-        assertTrue(featureRegistry.onCommand(sender, command, "mockCommand", new String[0]));
-        verify((CommandExecutor) mockFeature).onCommand(sender, command, "mockCommand", new String[0]);
+        assertTrue(featureRegistry.onCommand(sender, command, "mock_command", new String[0]));
+        verify((CommandExecutor) mockFeature).onCommand(sender, command, "mock_command", new String[0]);
     }
 
     @Test
@@ -130,8 +130,8 @@ class FeatureRegistryTest {
 
         featureRegistry.enable(mockFeature);
 
-        featureRegistry.onTabComplete(sender, command, "mockCommand", new String[0]);
-        verify((TabCompleter) mockFeature).onTabComplete(sender, command, "mockCommand", new String[0]);
+        featureRegistry.onTabComplete(sender, command, "mock_command", new String[0]);
+        verify((TabCompleter) mockFeature).onTabComplete(sender, command, "mock_command", new String[0]);
     }
 
     @SerializableAs("MockSerializable")

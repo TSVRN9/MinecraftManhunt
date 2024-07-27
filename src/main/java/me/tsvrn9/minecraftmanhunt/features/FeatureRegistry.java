@@ -96,7 +96,6 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     }
 
     public void saveAll() {
-        FileConfiguration config = plugin.getConfig();
         for (Feature feature : features) {
             save(feature);
         }
@@ -120,7 +119,8 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
 
     public void disableAll() {
         for (Feature feature : features) {
-            disable(feature);
+            if (isEnabled.get(feature))
+                disable(feature);
         }
     }
 

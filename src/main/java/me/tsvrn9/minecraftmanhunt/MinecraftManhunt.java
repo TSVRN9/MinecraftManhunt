@@ -15,6 +15,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
@@ -27,7 +28,7 @@ import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
 
-public final class MinecraftManhunt extends JavaPlugin implements Listener {
+public class MinecraftManhunt extends JavaPlugin implements Listener {
     public static final List<String> REMOVE_ON_DEATH_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
 
     private FeatureRegistry featureRegistry;
@@ -55,6 +56,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public void onEnable() {
         featureRegistry = new FeatureRegistry(this, features);
         featureRegistry.registerConfigurationSerializables();
+        featureRegistry.setConfig(getConfig());
+
         getServer().getPluginManager().registerEvents(this, this);
 
         ItemStack compass = new ItemStack(Material.COMPASS);
@@ -195,6 +198,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     public static boolean isRunner(Player p) { return p.equals(runner); }
     public static boolean isHunter(Player p) { return !p.equals(runner); }
     public static Player getRunner() { return runner; }
+    public static void setRunner(Player runner) { MinecraftManhunt.runner = runner; }
 
     public static void giveHunterGear(Player p) {
         p.getInventory().addItem(compass);
@@ -238,17 +242,17 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     public static void setCompassTarget(Player p, Location location) {
-        ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
         World.Environment environment = Objects.requireNonNull(location.getWorld()).getEnvironment();
 
         if (environment == World.Environment.NORMAL) {
-            p.setCompassTarget(runner.getLocation());
+            p.setCompassTarget(location);
         } else if (environment == World.Environment.NETHER) {
+            ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
             if (compass == null) return;
             CompassMeta meta = (CompassMeta) compass.getItemMeta();
             assert meta != null;
             meta.setItemName("Compass");
-            meta.setLodestone(runner.getLocation());
+            meta.setLodestone(location);
             meta.setLodestoneTracked(false);
             compass.setItemMeta(meta);
         }
@@ -282,7 +286,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void updateLastKnownLocation(PlayerPortalEvent event) {
+    public void updateLastKnownLocation(PlayerTeleportEvent event) {
         Player p = event.getPlayer();
         if (isRunner(p)) {
             lastKnownLocation.put(event.getFrom().getWorld(), event.getFrom());

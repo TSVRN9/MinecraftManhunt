@@ -21,8 +21,8 @@ public class OPHunterGear implements Feature {
             )
             .map(ItemStack::new)
             .peek(i -> {
-                i.addEnchantment(Enchantment.PROTECTION, 4);
-                i.addEnchantment(Enchantment.UNBREAKING, 3);
+                i.addUnsafeEnchantment(Enchantment.PROTECTION, 4);
+                i.addUnsafeEnchantment(Enchantment.UNBREAKING, 3);
             })
             .toList();
 
@@ -31,8 +31,8 @@ public class OPHunterGear implements Feature {
 
     private static List<ItemStack> defaultItems() {
         ItemStack axe = new ItemStack(Material.DIAMOND_AXE);
-        axe.addEnchantment(Enchantment.EFFICIENCY, 1);
-        axe.addEnchantment(Enchantment.UNBREAKING, 3);
+        axe.addUnsafeEnchantment(Enchantment.EFFICIENCY, 1);
+        axe.addUnsafeEnchantment(Enchantment.UNBREAKING, 3);
         return List.of(axe);
     }
 
