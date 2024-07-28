@@ -56,6 +56,11 @@ class FeatureRegistryTest {
         featureRegistry = new FeatureRegistry(plugin, List.of(mockFeature)).setConfig(config);
     }
 
+    @AfterEach
+    void tearDown() {
+        MockBukkit.unmock();
+    }
+
     private JavaPlugin getMockPlugin() {
         JavaPlugin plugin = null;
         try (InputStream mockYaml = FeatureRegistryTest.class.getClassLoader().getResourceAsStream("mock_plugin.yml")) {
@@ -66,11 +71,6 @@ class FeatureRegistryTest {
             e.printStackTrace();
         }
         return plugin;
-    }
-
-    @AfterEach
-    void tearDown() {
-        MockBukkit.unmock();
     }
 
     @Test

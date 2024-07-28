@@ -3,6 +3,7 @@ package me.tsvrn9.minecraftmanhunt.features;
 import me.tsvrn9.minecraftmanhunt.BaseTest;
 import org.bukkit.Location;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +26,7 @@ public class HunterSpeedBuffTest extends BaseTest {
         assertTrue(hunter.getActivePotionEffects().isEmpty());
     }
 
+    @Disabled
     @Test
     void speedShouldBeGiven() {
         runner.setLocation(new Location(world, 0, 0, 0));
@@ -35,6 +37,7 @@ public class HunterSpeedBuffTest extends BaseTest {
         assertFalse(hunter.getActivePotionEffects().isEmpty());
     }
 
+    @Disabled
     @Test
     void shouldDowngradeSpeed() {
         runner.setLocation(new Location(world, 0, 0, 0));

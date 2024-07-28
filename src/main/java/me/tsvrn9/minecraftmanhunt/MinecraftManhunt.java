@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -187,6 +188,7 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
         world.setSpawnLocation(location);
         Bukkit.getOnlinePlayers().forEach(p -> {
             p.getInventory().clear();
+            p.setRespawnLocation(null, true); // may need to change
             p.setHealth(0);
         });
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancement revoke @a everything");
