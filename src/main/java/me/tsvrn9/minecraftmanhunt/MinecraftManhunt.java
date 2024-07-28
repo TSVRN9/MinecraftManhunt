@@ -13,7 +13,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemFlag;
@@ -283,6 +282,14 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
     public static boolean isRightClickOnCompass(PlayerInteractEvent event) {
         return event.getItem() != null && isRightClick(event.getAction()) && event.getItem().getType() == Material.COMPASS;
+    }
+
+    public FeatureRegistry getFeatureRegistry() {
+        return featureRegistry;
+    }
+
+    public void setFeatureRegistry(List<Feature> features) {
+        featureRegistry = new FeatureRegistry(this, features);
     }
 
     @EventHandler
