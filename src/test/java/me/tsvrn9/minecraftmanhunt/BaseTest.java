@@ -4,6 +4,7 @@ import be.seeseemelk.mockbukkit.MockBukkit;
 import be.seeseemelk.mockbukkit.ServerMock;
 import be.seeseemelk.mockbukkit.WorldMock;
 import be.seeseemelk.mockbukkit.entity.PlayerMock;
+import me.tsvrn9.minecraftmanhunt.features.Feature;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
@@ -11,6 +12,7 @@ import org.bukkit.inventory.meta.CompassMeta;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+import java.util.List;
 import java.util.Random;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -21,7 +23,7 @@ public abstract class BaseTest {
     protected WorldMock world;
     protected ServerMock server;
     protected MinecraftManhunt manhunt;
-    protected PlayerMock runner, hunter, hunterTwo;
+    protected PlayerMock runner, hunter;
 
     @BeforeEach
     public void beforeEach() {
@@ -31,7 +33,6 @@ public abstract class BaseTest {
 
         runner = server.addPlayer();
         hunter = server.addPlayer();
-        hunterTwo = server.addPlayer();
 
         MinecraftManhunt.setRunner(runner);
     }
@@ -64,5 +65,12 @@ public abstract class BaseTest {
 
     protected Location someLocationIn(World world) {
         return new Location(world, random.nextDouble(-1000, 1000), random.nextDouble(255), random.nextDouble(-1000, 1000));
+    }
+
+    protected void loadFeatures(Feature... features) {
+        manhunt.setFeatureRegistry(List.of(features));
+        manhunt.getFeatureRegistry().registerConfigurationSerializables();
+        manhunt.getFeatureRegistry().setConfig(manhunt.getConfig());
+        manhunt.getFeatureRegistry().enableAll();
     }
 }

@@ -28,6 +28,8 @@ public class HunterSpeedBuff implements Feature, Listener {
         @Override
         public void run() {
             for (Player hunter : Bukkit.getOnlinePlayers()) {
+                if (MinecraftManhunt.isRunner(hunter)) continue;
+
                 TrackedLocation trackedLocation = MinecraftManhunt.getRunnerLocation(hunter.getWorld());
 
                 if (!trackedLocation.exists()) return;
@@ -51,7 +53,7 @@ public class HunterSpeedBuff implements Feature, Listener {
 
     private PotionEffect getSpeedBuff(double distanceSquared) {
         for (SpeedThreshold threshold : thresholds) {
-            if (threshold.distanceThreshold*threshold.distanceThreshold > distanceSquared) {
+            if (threshold.distanceThreshold*threshold.distanceThreshold < distanceSquared) {
                 return new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, threshold.amplifier);
             }
         }
@@ -61,7 +63,7 @@ public class HunterSpeedBuff implements Feature, Listener {
     @Override
     public void onEnable(Plugin plugin) {
         thresholds.sort(
-                Comparator.comparingDouble(a -> a.distanceThreshold)
+                Comparator.comparingDouble(a -> -a.distanceThreshold)
         );
 
         bukkitRunnable.runTaskTimer(plugin, 0L, checkInTicks);

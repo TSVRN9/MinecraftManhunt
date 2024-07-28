@@ -1,15 +1,24 @@
 package me.tsvrn9.minecraftmanhunt;
 
 import be.seeseemelk.mockbukkit.WorldMock;
+import be.seeseemelk.mockbukkit.entity.PlayerMock;
 import org.bukkit.Location;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MinecraftManhuntTest extends BaseTest {
+    PlayerMock hunterTwo;
+
+    @BeforeEach
+    void setup() {
+        hunterTwo = server.addPlayer();
+    }
+
     @Test
     void testSettingRunner() {
         assertEquals(runner, MinecraftManhunt.getRunner());

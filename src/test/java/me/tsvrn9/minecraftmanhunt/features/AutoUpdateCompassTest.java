@@ -10,8 +10,6 @@ import org.bukkit.inventory.meta.CompassMeta;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AutoUpdateCompassTest extends BaseTest {
@@ -19,12 +17,7 @@ public class AutoUpdateCompassTest extends BaseTest {
 
     @BeforeEach
     void setup() {
-        manhunt.setFeatureRegistry(List.of(
-                new AutoUpdateCompass()
-        ));
-        manhunt.getFeatureRegistry().registerConfigurationSerializables();
-        manhunt.getFeatureRegistry().setConfig(manhunt.getConfig());
-        manhunt.getFeatureRegistry().enableAll();
+        loadFeatures(new AutoUpdateCompass());
     }
 
     @Test
