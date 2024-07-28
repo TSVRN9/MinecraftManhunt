@@ -4,10 +4,7 @@ import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigurableLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
+import org.bukkit.command.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -141,10 +138,14 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
 
         if (handledCommands != null && handledCommands.length != 0) {
             if (feature instanceof CommandExecutor) {
-                for (String command : handledCommands) {
-                    command = command.toLowerCase();
-                    Objects.requireNonNull(plugin.getCommand(command)).setExecutor(this);
-                    commandRegistry.put(command, feature);
+                for (String commandName : handledCommands) {
+                    commandName = commandName.toLowerCase();
+                    PluginCommand command = plugin.getCommand(commandName);
+                    if (command == null) {
+                        throw new IllegalStateException(STR."Command \{commandName} not found");
+                    }
+                    command.setExecutor(this);
+                    commandRegistry.put(commandName, feature);
                 }
             } else {
                 throw new IllegalArgumentException(

@@ -8,3 +8,5 @@ commands:
     aliases: mm
   shout: # used by the private_chat feature
     aliases: s
+  timer:
+  privatechat:

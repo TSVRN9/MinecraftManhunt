@@ -108,7 +108,7 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
         }
 
         public void startTimer(Plugin plugin) {
-            this.runTaskTimer(plugin, 0L, 20L);
+            this.runTaskTimerAsynchronously(plugin, 0L, 20L);
         }
     }
 }

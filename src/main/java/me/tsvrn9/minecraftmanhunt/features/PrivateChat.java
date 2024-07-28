@@ -1,5 +1,7 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
+import io.papermc.paper.event.player.ChatEvent;
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import org.bukkit.Bukkit;
@@ -32,10 +34,10 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
     }
 
     @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
-        if (usingPrivateChannel.get(event.getPlayer()) && MinecraftManhunt.isHunter(event.getPlayer())) {
-            event.getRecipients().remove(MinecraftManhunt.getRunner());
-            event.setFormat(STR."\{ChatColor.LIGHT_PURPLE}Private:\{ChatColor.RESET} <%s> %s");
+    public void onChat(AsyncChatEvent event) {
+        if (usingPrivateChannel.getOrDefault(event.getPlayer(), enabledOnJoin) && MinecraftManhunt.isHunter(event.getPlayer())) {
+            event.viewers().remove(MinecraftManhunt.getRunner());
+            event.message(STR."\{ChatColor.LIGHT_PURPLE}Private:\{ChatColor.RESET} <%s> %s"); // TODO MIGRATE TO ADVENTURE API
         }
     }
 

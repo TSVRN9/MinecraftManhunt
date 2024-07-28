@@ -92,7 +92,7 @@
       <dependency>
           <groupId>com.github.seeseemelk</groupId>
           <artifactId>MockBukkit-v1.21</artifactId>
-          <version>3.95.1</version>
+          <version>3.96.1</version>
           <scope>test</scope>
       </dependency>
       <dependency>

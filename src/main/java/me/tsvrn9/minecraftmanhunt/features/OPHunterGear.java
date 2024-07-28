@@ -45,13 +45,13 @@ public class OPHunterGear implements Feature {
             item.setItemMeta(meta);
         }
 
-        MinecraftManhunt.hunterArmor = this.opArmor; // should be fine
+        MinecraftManhunt.hunterArmor.addAll(this.opArmor);
         MinecraftManhunt.hunterItems.addAll(this.items);
     }
 
     @Override
     public void onDisable(Plugin plugin) {
-        MinecraftManhunt.hunterArmor.clear(); // should be fine
+        MinecraftManhunt.hunterArmor.removeAll(this.opArmor); // should be fine
         MinecraftManhunt.hunterItems.removeAll(this.items);
     }
 
