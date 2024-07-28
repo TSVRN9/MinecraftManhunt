@@ -19,7 +19,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public abstract class BaseTest {
-    private final Random random = new Random(0);
+    private Random random;
+
     protected WorldMock world;
     protected ServerMock server;
     protected MinecraftManhunt manhunt;
@@ -49,7 +50,7 @@ public abstract class BaseTest {
     }
 
     protected Location someLocation() {
-        return new Location(world, random.nextDouble(-1000, 1000), random.nextDouble(255), random.nextDouble(-1000, 1000));
+        return new Location(world, getRandom().nextDouble(-1000, 1000), getRandom().nextDouble(255), getRandom().nextDouble(-1000, 1000));
     }
 
     protected void mockLodestoneFunctionality(ItemStack compass) {
@@ -64,7 +65,7 @@ public abstract class BaseTest {
     }
 
     protected Location someLocationIn(World world) {
-        return new Location(world, random.nextDouble(-1000, 1000), random.nextDouble(255), random.nextDouble(-1000, 1000));
+        return new Location(world, getRandom().nextDouble(-1000, 1000), getRandom().nextDouble(255), getRandom().nextDouble(-1000, 1000));
     }
 
     protected void loadFeatures(Feature... features) {
@@ -72,5 +73,10 @@ public abstract class BaseTest {
         manhunt.getFeatureRegistry().registerConfigurationSerializables();
         manhunt.getFeatureRegistry().setConfig(manhunt.getConfig());
         manhunt.getFeatureRegistry().enableAll();
+    }
+
+    protected Random getRandom() {
+        if (random == null) random = new Random(0);
+        return random;
     }
 }

@@ -12,31 +12,31 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MinecraftManhuntTest extends BaseTest {
-    PlayerMock hunterTwo;
+    PlayerMock hunter2;
 
     @BeforeEach
     void setup() {
-        hunterTwo = server.addPlayer();
+        hunter2 = server.addPlayer();
     }
 
     @Test
     void testSettingRunner() {
         assertEquals(runner, MinecraftManhunt.getRunner());
         assertNotEquals(hunter, MinecraftManhunt.getRunner());
-        assertNotEquals(hunterTwo, MinecraftManhunt.getRunner());
+        assertNotEquals(hunter2, MinecraftManhunt.getRunner());
     }
 
     @Test
     void testCompass() {
         runner.setLocation(someLocation());
         hunter.setLocation(someLocation());
-        hunterTwo.setLocation(someLocation());
+        hunter2.setLocation(someLocation());
 
         MinecraftManhunt.updateHunterCompass(hunter);
-        MinecraftManhunt.updateHunterCompass(hunterTwo);
+        MinecraftManhunt.updateHunterCompass(hunter2);
 
         assertEquals(runner.getLocation(), hunter.getCompassTarget());
-        assertEquals(runner.getLocation(), hunterTwo.getCompassTarget());
+        assertEquals(runner.getLocation(), hunter2.getCompassTarget());
     }
 
     @Test

@@ -16,7 +16,7 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
     @ConfigValue("default_timer_duration_in_seconds")
     private int defaultTimerDurationInSeconds = 60;
 
-    private TimerTask timer;
+    protected TimerTask timer;
     private Plugin plugin;
 
     @Override
@@ -77,7 +77,7 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
         }
     }
 
-    private static class TimerTask extends BukkitRunnable {
+    protected static class TimerTask extends BukkitRunnable {
         private int durationInSeconds;
         private TimerTask(int durationInSeconds) {
             this.durationInSeconds = durationInSeconds;

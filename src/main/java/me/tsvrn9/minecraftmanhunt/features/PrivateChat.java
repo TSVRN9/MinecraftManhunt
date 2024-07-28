@@ -1,9 +1,11 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
+import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
-import io.papermc.paper.event.player.ChatEvent;
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -13,9 +15,9 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,6 +26,11 @@ import java.util.Map;
 
 public class PrivateChat implements Feature, CommandExecutor, TabCompleter, Listener {
     private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
+    private final ChatRenderer renderer = ChatRenderer.viewerUnaware(
+            (_, sourceDisplayName, message) -> Component.text("Private: ", NamedTextColor.LIGHT_PURPLE)
+                    .append(Component.text(STR."<\{sourceDisplayName}> "))
+                    .append(message)
+    );
 
     @ConfigValue(value = "enabled_on_join")
     private boolean enabledOnJoin = true;
@@ -37,7 +44,7 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
     public void onChat(AsyncChatEvent event) {
         if (usingPrivateChannel.getOrDefault(event.getPlayer(), enabledOnJoin) && MinecraftManhunt.isHunter(event.getPlayer())) {
             event.viewers().remove(MinecraftManhunt.getRunner());
-            event.message(STR."\{ChatColor.LIGHT_PURPLE}Private:\{ChatColor.RESET} <%s> %s"); // TODO MIGRATE TO ADVENTURE API
+            event.renderer(renderer);
         }
     }
 
@@ -59,7 +66,7 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, Command command, @NotNull String label, String[] args) {
         switch (command.getName().toLowerCase()) {
             case "shout" -> {
                 if (args.length == 0 && sender instanceof Player player) {
@@ -69,7 +76,7 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
                     usingPrivateChannel.put(player, isEnabled);
                 } else {
                     String message = STR."<\{sender.getName()}> \{Arrays.stream(args).reduce((total, el) -> STR."\{total} \{el}")}";
-                    Bukkit.broadcastMessage(message);
+                    Bukkit.broadcast(Component.text(message));
                 }
             }
         }
@@ -78,7 +85,7 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         return List.of();
     }
 }
