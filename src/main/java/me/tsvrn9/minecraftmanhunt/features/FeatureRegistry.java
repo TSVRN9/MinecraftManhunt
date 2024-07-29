@@ -104,8 +104,8 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         if (section == null) {
             section = config.createSection(feature.getPath());
         }
-        ConfigurableLoader.save(feature, section);
         section.set("enabled", isEnabled.get(feature));
+        ConfigurableLoader.save(feature, section);
     }
 
     public void enableAll() {

@@ -2,6 +2,9 @@ package me.tsvrn9.minecraftmanhunt;
 
 import me.tsvrn9.minecraftmanhunt.features.*;
 import me.tsvrn9.minecraftmanhunt.features.Timer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -11,9 +14,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemFlag;
@@ -29,8 +31,6 @@ import java.util.stream.Stream;
 import static java.lang.StringTemplate.STR;
 
 public class MinecraftManhunt extends JavaPlugin implements Listener {
-    public static final List<String> REMOVE_ON_DEATH_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
-
     private FeatureRegistry featureRegistry;
     private final List<Feature> features = List.of(
         new PrivateChat(),
@@ -41,7 +41,9 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
         new AutoUpdateCompass(),
         new RunnerFortressTracking(),
         new OPHunterGear(),
-        new Timer()
+        new Timer(),
+        new DisableBoats(),
+        new PreventEyesFromBreaking()
     );
     private static ItemStack compass;
     private static final Map<World, Location> lastKnownLocation = new HashMap<>();
@@ -64,8 +66,8 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
         ItemMeta compassMeta = compass.getItemMeta();
         assert compassMeta != null;
         compassMeta.addEnchant(Enchantment.UNBREAKING, 1, true);
+        compassMeta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
         compassMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        compassMeta.setLore(REMOVE_ON_DEATH_LORE);
         compass.setItemMeta(compassMeta);
 
         MinecraftManhunt.compass = compass;
@@ -73,8 +75,8 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        featureRegistry.saveAll();
         featureRegistry.disableAll();
+        featureRegistry.saveAll();
     }
 
     @Override
@@ -131,13 +133,26 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                     FileConfiguration config = getConfig();
                     switch (args.length) {
                         case 1 -> {
-                            String path = args[0];
+                            for (String key : config.getKeys(true)) {
+                                Object value = config.get(key);
+                                if (value == null) continue;
+                                String displayValue = value.toString();
+                                String[] lines = displayValue.split("\n");
+                                Component component = Component.text(key, NamedTextColor.YELLOW)
+                                        .clickEvent(ClickEvent.suggestCommand(STR."mm settings \{key}"))
+                                        .append(Component.text(STR.": \{lines[0]}"));
+
+                                sender.sendMessage(component);
+                            }
+                        }
+                        case 2 -> {
+                            String path = args[1];
                             Object value = config.get(path);
                             sender.sendMessage(STR."\"\{path}\"'s value: \{value}");
                         }
-                        case 2 -> {
-                            String path = args[0];
-                            String value = args[1];
+                        case 3 -> {
+                            String path = args[1];
+                            String value = args[2];
                             boolean success = featureRegistry.setValue(path, value);
 
                             if (success) {
@@ -154,9 +169,12 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
                 case "save" -> saveConfig();
                 case "reload" -> {
+                    sender.sendMessage("Reloading config...");
                     featureRegistry.disableAll();
                     reloadConfig();
+                    featureRegistry.loadAll();
                     featureRegistry.enableAll();
+                    sender.sendMessage("Reloaded!");
                 }
                 case "reset" -> reset();
                 default -> {
@@ -192,14 +210,16 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
             p.setHealth(0);
         });
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancement revoke @a everything");
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "weather set clear");
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "weather clear");
         world.setTime(1000);
     }
 
     public static boolean isRunner(Player p) { return p.equals(runner); }
     public static boolean isHunter(Player p) { return !p.equals(runner); }
     public static Player getRunner() { return runner; }
-    public static void setRunner(Player runner) { MinecraftManhunt.runner = runner; }
+    public static void setRunner(Player runner) {
+        MinecraftManhunt.runner = runner;
+    }
 
     public static void giveHunterGear(Player p) {
         p.getInventory().addItem(compass);
@@ -247,12 +267,22 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
         if (environment == World.Environment.NORMAL) {
             p.setCompassTarget(location);
+            ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
+            if (compass != null) {
+                CompassMeta meta = (CompassMeta) compass.getItemMeta();
+                assert meta != null;
+                if (meta.getLodestone() != null) {
+                    meta.itemName(Component.text("Compass"));
+                    meta.setLodestone(null);
+                    compass.setItemMeta(meta);
+                }
+            }
         } else if (environment == World.Environment.NETHER) {
             ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
             if (compass == null) return;
             CompassMeta meta = (CompassMeta) compass.getItemMeta();
             assert meta != null;
-            meta.setItemName("Compass");
+            meta.itemName(Component.text("Compass"));
             meta.setLodestone(location);
             meta.setLodestoneTracked(false);
             compass.setItemMeta(meta);
@@ -303,21 +333,11 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void onDeath(PlayerDeathEvent event) {
-        List<ItemStack> toRemove = new ArrayList<>();
-        for (ItemStack drop : event.getDrops()) {
-            List<String> lore = Objects.requireNonNull(drop.getItemMeta()).getLore();
-
-            if (lore == null || lore.isEmpty()) continue;
-
-            String marker = REMOVE_ON_DEATH_LORE.getFirst();
-            String first = lore.getFirst();
-
-            if (marker.equals(first)) {
-                toRemove.add(drop);
-            }
+    public void disconnectEvent(PlayerQuitEvent event) {
+        Player p = event.getPlayer();
+        if (isRunner(p)) {
+            lastKnownLocation.put(p.getLocation().getWorld(), p.getLocation());
         }
-        event.getDrops().removeAll(toRemove);
     }
 
     @EventHandler

@@ -94,7 +94,7 @@ public class HunterSpeedBuff implements Feature, Listener {
         ));
     }
 
-    private record SpeedThreshold(int amplifier, double distanceThreshold) implements ConfigurationSerializable {
+    public record SpeedThreshold(int amplifier, double distanceThreshold) implements ConfigurationSerializable {
         public SpeedThreshold {
             if (amplifier < 0) throw new IllegalArgumentException("Amplifier cannot be negative");
             if (distanceThreshold < 0) throw new IllegalArgumentException("Amplifier cannot be negative");

@@ -23,6 +23,7 @@ public class OPHunterGear implements Feature {
             .peek(i -> {
                 i.addUnsafeEnchantment(Enchantment.PROTECTION, 4);
                 i.addUnsafeEnchantment(Enchantment.UNBREAKING, 3);
+                i.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
             })
             .toList();
 
@@ -33,18 +34,12 @@ public class OPHunterGear implements Feature {
         ItemStack axe = new ItemStack(Material.DIAMOND_AXE);
         axe.addUnsafeEnchantment(Enchantment.EFFICIENCY, 1);
         axe.addUnsafeEnchantment(Enchantment.UNBREAKING, 3);
+        axe.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
         return List.of(axe);
     }
 
     @Override
     public void onEnable(Plugin plugin) {
-        for (ItemStack item : Stream.concat(opArmor.stream(), items.stream()).toList()) {
-            ItemMeta meta = item.getItemMeta();
-            assert meta != null;
-            meta.setLore(MinecraftManhunt.REMOVE_ON_DEATH_LORE);
-            item.setItemMeta(meta);
-        }
-
         MinecraftManhunt.hunterArmor.addAll(this.opArmor);
         MinecraftManhunt.hunterItems.addAll(this.items);
     }

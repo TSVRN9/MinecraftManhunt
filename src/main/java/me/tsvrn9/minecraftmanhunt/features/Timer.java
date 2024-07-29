@@ -1,6 +1,7 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -100,7 +101,7 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
                 if (overMinute) {
                     Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds/60} minutes left!");
                 } else {
-                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds} second\{durationInSeconds == 1 ? "s" : ""}!");
+                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds} second\{durationInSeconds != 1 ? "s" : ""}!");
                 }
             }
 
