@@ -4,10 +4,13 @@ import me.tsvrn9.minecraftmanhunt.features.*;
 import me.tsvrn9.minecraftmanhunt.features.Timer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
+import org.bukkit.block.Biome;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -24,8 +27,10 @@ import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
@@ -136,12 +141,8 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                             for (String key : config.getKeys(true)) {
                                 Object value = config.get(key);
                                 if (value == null) continue;
-                                String displayValue = value.toString();
-                                String[] lines = displayValue.split("\n");
-                                Component component = Component.text(key, NamedTextColor.YELLOW)
-                                        .clickEvent(ClickEvent.suggestCommand(STR."mm settings \{key}"))
-                                        .append(Component.text(STR.": \{lines[0]}"));
-
+                                String stringValue = value.toString();
+                                Component component = getComponent(key, stringValue, value);
                                 sender.sendMessage(component);
                             }
                         }
@@ -167,16 +168,19 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                         }
                     }
                 }
-                case "save" -> saveConfig();
+                case "save" -> {
+                    sender.sendMessage("Saving config...");
+                    saveConfig();
+                    sender.sendMessage("Saved config!");
+                }
                 case "reload" -> {
                     sender.sendMessage("Reloading config...");
-                    featureRegistry.disableAll();
-                    reloadConfig();
-                    featureRegistry.loadAll();
-                    featureRegistry.enableAll();
-                    sender.sendMessage("Reloaded!");
+                    reload(() -> sender.sendMessage("Reloaded!"));
                 }
-                case "reset" -> reset();
+                case "reset" -> {
+                    Bukkit.broadcast(Component.text("Picking a new spot..."));
+                    reset();
+                }
                 default -> {
                     sender.sendMessage(STR."\{ChatColor.RED}Not a valid command!");
                     return false;
@@ -187,12 +191,50 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
         return true;
     }
 
+    private static @NotNull Component getComponent(String key, String stringValue, Object value) {
+        String[] lines = stringValue.split("\n");
+        Component component = Component.text(key, NamedTextColor.YELLOW)
+                .clickEvent(ClickEvent.suggestCommand(STR."/mm settings \{key}"))
+                .append(Component.text(":", NamedTextColor.WHITE));
+
+        if (!(value instanceof MemorySection)) {
+            Component displayValue = lines.length <= 1
+                    ? Component.text(STR." \{stringValue}", NamedTextColor.WHITE)
+                    : Component.text(STR." \{lines[0]}", NamedTextColor.WHITE)
+                    .hoverEvent(HoverEvent.showText(Component.text(stringValue, NamedTextColor.WHITE)));
+            component = component.append(displayValue);
+        }
+        return component;
+    }
+
+    protected void reload(Runnable callback) {
+        featureRegistry.disableAll();
+        reloadConfig();
+
+        Bukkit.getScheduler().runTask(this, () -> {
+            featureRegistry.loadAll();
+            featureRegistry.enableAll();
+            callback.run();
+        });
+    }
+
     private void reset() {
-        World world = Bukkit.getWorlds().stream()
-                .filter(w -> w.getEnvironment() == World.Environment.NORMAL)
-                .findFirst().orElse(runner.getWorld());
+        World world = runner == null ? Bukkit.getWorlds().getFirst() : runner.getWorld();
         Location location = world.getSpawnLocation();
+        Set<Biome> bannedBiomes = Set.of(
+                Biome.OCEAN,
+                Biome.COLD_OCEAN,
+                Biome.DEEP_COLD_OCEAN,
+                Biome.DEEP_OCEAN,
+                Biome.WARM_OCEAN,
+                Biome.LUKEWARM_OCEAN,
+                Biome.DEEP_LUKEWARM_OCEAN
+        );
+
         location.add(new Vector(50000, 0, 50000));
+        while (!bannedBiomes.contains(location.getBlock().getBiome())) {
+            location.add(new Vector(500, 0, 500));
+        }
 
         // search for top of the world
         for (int y = 319; y >= 0; y--) {
@@ -248,9 +290,11 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     public static TrackedLocation updateHunterCompass(Player p) {
+        if (runner == null) return new TrackedLocation(null, true);
+
         TrackedLocation trackedLocation = getRunnerLocation(p.getWorld());
 
-        if (compass != null) {
+        if (p.getInventory().contains(Material.COMPASS)) {
             if (isHunter(p)) {
                 if (!trackedLocation.exists()) {
                     return trackedLocation;
@@ -265,9 +309,12 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
     public static void setCompassTarget(Player p, Location location) {
         World.Environment environment = Objects.requireNonNull(location.getWorld()).getEnvironment();
 
+        if (!p.getInventory().contains(Material.COMPASS)) return;
+
+        ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
+
         if (environment == World.Environment.NORMAL) {
             p.setCompassTarget(location);
-            ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
             if (compass != null) {
                 CompassMeta meta = (CompassMeta) compass.getItemMeta();
                 assert meta != null;
@@ -278,7 +325,6 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
             }
         } else if (environment == World.Environment.NETHER) {
-            ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
             if (compass == null) return;
             CompassMeta meta = (CompassMeta) compass.getItemMeta();
             assert meta != null;
@@ -290,6 +336,8 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     public static TrackedLocation getRunnerLocation(World world) {
+        if (runner == null) return new TrackedLocation(null, true);
+
         boolean isOutdated = !runner.getWorld().equals(world);
         Location location = isOutdated ? lastKnownLocation.get(world) : runner.getLocation();
 

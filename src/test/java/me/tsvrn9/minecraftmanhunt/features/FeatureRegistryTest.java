@@ -136,8 +136,8 @@ class FeatureRegistryTest {
 
     @SerializableAs("MockSerializable")
     private static class MockSerializable implements ConfigurationSerializable {
-        private String name;
-        private int value;
+        private final String name;
+        private final int value;
 
         public MockSerializable(String name, int value) {
             this.name = name;

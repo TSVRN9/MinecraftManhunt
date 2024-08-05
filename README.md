@@ -12,7 +12,9 @@ mvn compile
 mvn package
 ```
 This will leave build the jar file in `./target`. 
-Copy or move `MinecraftManhunt-X.X.jar` into the `/plugins` folder of your server.
+Copy or move `MinecraftManhunt-X.X.jar` into the `/plugins` folder of your server. 
+Make sure to run your server with java preview features on! (I used string templates for fun!!)
+**This will only work on Paper and any of its forks**
 ## Some Fully Configurable Features...
 * Prevent (some) Boring Deaths!!
   * Burning to death because of blazes is not going to happen!!!

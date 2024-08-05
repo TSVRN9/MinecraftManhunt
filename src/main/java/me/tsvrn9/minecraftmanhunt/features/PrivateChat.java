@@ -28,8 +28,10 @@ public class PrivateChat implements Feature, CommandExecutor, TabCompleter, List
     private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
     private final ChatRenderer renderer = ChatRenderer.viewerUnaware(
             (_, sourceDisplayName, message) -> Component.text("Private: ", NamedTextColor.LIGHT_PURPLE)
-                    .append(Component.text(STR."<\{sourceDisplayName}> "))
-                    .append(message)
+                    .append(Component.text("<", NamedTextColor.WHITE))
+                    .append(sourceDisplayName.color(NamedTextColor.WHITE))
+                    .append(Component.text("> ", NamedTextColor.WHITE))
+                    .append(message.color(NamedTextColor.WHITE))
     );
 
     @ConfigValue(value = "enabled_on_join")

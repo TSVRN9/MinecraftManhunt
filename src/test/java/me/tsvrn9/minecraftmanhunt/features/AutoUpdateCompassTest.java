@@ -13,11 +13,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AutoUpdateCompassTest extends BaseTest {
-    final long enoughTicks = 30L;
+    final long enoughTicks = 60L;
 
     @BeforeEach
     void setup() {
         loadFeatures(new AutoUpdateCompass());
+        MinecraftManhunt.giveHunterGear(hunter);
     }
 
     @Test
@@ -53,8 +54,6 @@ public class AutoUpdateCompassTest extends BaseTest {
 
         runner.setLocation(someLocationIn(nether));
         hunter.setLocation(someLocationIn(nether));
-
-        MinecraftManhunt.giveHunterGear(hunter);
 
         ItemStack compass = hunter.getInventory().getItem(0);
         assert compass != null;

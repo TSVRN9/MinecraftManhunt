@@ -3,6 +3,7 @@ package me.tsvrn9.minecraftmanhunt.features;
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -15,6 +16,7 @@ public class AutoUpdateCompass implements Feature {
         public void run() {
             Bukkit.getOnlinePlayers().stream()
                     .filter(MinecraftManhunt::isHunter)
+                    .filter(h -> h.getInventory().contains(Material.COMPASS))
                     .forEach(MinecraftManhunt::updateHunterCompass);
         }
     };

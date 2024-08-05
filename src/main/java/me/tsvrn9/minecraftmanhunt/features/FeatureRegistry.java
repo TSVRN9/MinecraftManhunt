@@ -221,8 +221,17 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
                         } else {
                             return false;
                         }
+                    } else if (key.equals("enabled")) {
+                        boolean enabled = Boolean.parseBoolean(value);
+                        if (enabled && !isEnabled.get(feature)) {
+                            enable(feature);
+                        } else if (!enabled && isEnabled.get(feature)) {
+                            disable(feature);
+                        }
+                        return true;
                     }
                 } catch (Exception e) {
+                    e.printStackTrace();
                     return false;
                 }
             }

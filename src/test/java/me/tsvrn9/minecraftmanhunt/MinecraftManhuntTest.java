@@ -16,7 +16,7 @@ public class MinecraftManhuntTest extends BaseTest {
 
     @BeforeEach
     void setup() {
-        hunter2 = server.addPlayer();
+        hunter2 = server.addPlayer();        MinecraftManhunt.giveHunterGear(hunter);        MinecraftManhunt.giveHunterGear(hunter2);
     }
 
     @Test
@@ -62,8 +62,6 @@ public class MinecraftManhuntTest extends BaseTest {
         runner.setLocation(someLocationIn(nether));
         hunter.setLocation(someLocationIn(nether));
 
-        MinecraftManhunt.giveHunterGear(hunter);
-
         ItemStack compass = hunter.getInventory().getItem(0);
         assert compass != null;
         mockLodestoneFunctionality(compass);
@@ -74,4 +72,8 @@ public class MinecraftManhuntTest extends BaseTest {
         assertEquals(runner.getLocation(), meta.getLodestone());
     }
 
+    @Test
+    void testReload() {
+        manhunt.reload(() -> {});
+    }
 }
