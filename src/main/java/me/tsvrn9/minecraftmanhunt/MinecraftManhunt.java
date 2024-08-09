@@ -30,7 +30,6 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
@@ -94,9 +93,11 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
             }
             case 2 -> switch (args[0].toLowerCase()) {
                 case "speedrunner" ->
-                        complete(args[1], Bukkit.getOnlinePlayers().stream().map(Player::getName).toArray(String[]::new));
-                case "settings" -> // TODO pushed to 3.0
-                        List.of();
+                        complete(args[1], Bukkit.getOnlinePlayers().stream()
+                                .map(Player::getName).toArray(String[]::new));
+                case "settings" ->
+                        complete(args[1], getConfig().getKeys(true).stream()
+                                .filter(k -> !(getConfig().get(k) instanceof MemorySection)).toArray(String[]::new));
                 default -> List.of();
             };
             default -> List.of();
@@ -111,6 +112,12 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (runner == null && !(args.length == 2 && args[0].equalsIgnoreCase("speedrunner"))) {
+            sender.sendMessage(Component.text("Use /mm speedrunner <name> or click here to set the speedrunner!", NamedTextColor.YELLOW)
+                    .clickEvent(ClickEvent.suggestCommand("/mm speedrunner "))
+                    .hoverEvent(HoverEvent.showText(Component.text("/mm speedrunner <name>"))));
+            return true;
+        }
         if (label.equalsIgnoreCase("mm") || label.equalsIgnoreCase("minecraftmanhunt")) {
             if (args.length == 0) {
                 sender.sendMessage(STR."\{ChatColor.RED}Not a valid command!");
@@ -158,6 +165,7 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
                             if (success) {
                                 sender.sendMessage(STR."\{ChatColor.GREEN}Value updated!");
+                                featureRegistry.saveAll();
                             } else {
                                 sender.sendMessage(STR."\{ChatColor.RED}Could not update value!");
                                 return false;

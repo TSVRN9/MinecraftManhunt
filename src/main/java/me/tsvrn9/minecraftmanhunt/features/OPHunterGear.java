@@ -2,6 +2,7 @@ package me.tsvrn9.minecraftmanhunt.features;
 
 import me.tsvrn9.minecraftmanhunt.MinecraftManhunt;
 import me.tsvrn9.minecraftmanhunt.configuration.ConfigValue;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;

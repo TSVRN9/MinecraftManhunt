@@ -84,8 +84,11 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
     }
 
     protected static class TimerTask extends BukkitRunnable {
+        private final int initalDurationInSeconds;
         private int durationInSeconds;
+
         private TimerTask(int durationInSeconds) {
+            this.initalDurationInSeconds = durationInSeconds;
             this.durationInSeconds = durationInSeconds;
         }
 
@@ -97,16 +100,22 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
             }
 
             boolean overMinute = durationInSeconds > 60;
-            boolean showMessage = !overMinute ? switch (durationInSeconds) {
+            boolean showMessage = initalDurationInSeconds == durationInSeconds || (!overMinute ? switch (durationInSeconds) {
                 case 60, 30, 10, 5, 4, 3, 2, 1 -> true;
                 default -> false;
-            } : durationInSeconds % 60 == 0;
+            } : durationInSeconds % 60 == 0);
 
             if (showMessage) {
                 if (overMinute) {
-                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds/60} minutes left!");
+                    int minutes = durationInSeconds/60;
+                    int seconds = durationInSeconds % 60;
+                    if (durationInSeconds % 60 != 0) {
+                        Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{minutes} minute\{s(minutes)} and \{seconds} second\{s(seconds)} left!");
+                    } else {
+                        Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{minutes/60} minute\{s(minutes)} left!");
+                    }
                 } else {
-                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds} second\{durationInSeconds != 1 ? "s" : ""}!");
+                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{durationInSeconds} second\{s(durationInSeconds)}!");
                 }
             }
 
@@ -115,6 +124,10 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
 
         public void startTimer(Plugin plugin) {
             this.runTaskTimerAsynchronously(plugin, 0L, 20L);
+        }
+
+        private static String s(int n) {
+            return n == 1 ? "" : "s";
         }
     }
 }

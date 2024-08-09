@@ -46,7 +46,6 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         // init pathToFeature map
         for (Feature feature : features) {
             pathToFeature.put(feature.getPath(), feature);
-            isEnabled.put(feature, false);
         }
         this.features = features;
     }
@@ -101,7 +100,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         if (section == null) {
             section = config.createSection(feature.getPath());
         }
-        section.set("enabled", isEnabled.get(feature));
+        section.set("enabled", isEnabled(feature));
         ConfigurableLoader.save(feature, section);
     }
 
@@ -113,7 +112,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
 
     public void disableAll() {
         for (Feature feature : features) {
-            if (isEnabled.get(feature))
+            if (isEnabled(feature))
                 disable(feature);
         }
     }
@@ -177,7 +176,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     }
 
     public void reload(Feature feature) {
-        boolean wasEnabled = isEnabled.get(feature);
+        boolean wasEnabled = isEnabled(feature);
         disable(feature);
 
         if (wasEnabled)
@@ -241,7 +240,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         String commandName = command.getName().toLowerCase();
         if (commandRegistry.containsKey(commandName)) {
             Feature feature = commandRegistry.get(commandName);
-            if (isEnabled.get(feature)) {
+            if (isEnabled(feature)) {
                 if (feature instanceof CommandExecutor executor) {
                     executor.onCommand(sender, command, label, args);
                 } else {
@@ -263,7 +262,7 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         String commandName = command.getName().toLowerCase();
         if (tabRegistry.containsKey(commandName)) {
             Feature feature = tabRegistry.get(commandName);
-            if (isEnabled.get(feature)) {
+            if (isEnabled(feature)) {
                 if (feature instanceof TabCompleter completer) {
                     return completer.onTabComplete(sender, command, label, args);
                 } else {
@@ -280,6 +279,6 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
     }
 
     public boolean isEnabled(Feature feature) {
-        return isEnabled.get(feature);
+        return isEnabled.getOrDefault(feature, false);
     }
 }
