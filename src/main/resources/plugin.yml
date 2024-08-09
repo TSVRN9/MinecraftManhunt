@@ -6,5 +6,7 @@ api-version: '1.21'
 commands:
   minecraftmanhunt:
     aliases: mm
-  shout:
+  shout: # used by the private_chat feature
     aliases: s
+  timer:
+  privatechat:

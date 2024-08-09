@@ -1,156 +1,123 @@
 package me.tsvrn9.minecraftmanhunt;
 
+import me.tsvrn9.minecraftmanhunt.features.*;
+import me.tsvrn9.minecraftmanhunt.features.Timer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
+import org.bukkit.block.Biome;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.MemorySection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.PiglinBarterEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.generator.structure.Structure;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Stream;
 
 import static java.lang.StringTemplate.STR;
 
-public final class MinecraftManhunt extends JavaPlugin implements Listener {
-    private ItemStack compass;
-    private List<ItemStack> opArmor;
-    private ItemStack opAxe;
-    private final List<String> OP_LORE = List.of(STR."\{ChatColor.COLOR_CHAR}O");
+public class MinecraftManhunt extends JavaPlugin implements Listener {
+    private FeatureRegistry featureRegistry;
+    private final List<Feature> features = List.of(
+        new PrivateChat(),
+        new HunterSpeedBuff(),
+        new BuffPiglinTrades(),
+        new BuffRodDropRate(),
+        new PreventBoringDeaths(),
+        new AutoUpdateCompass(),
+        new RunnerFortressTracking(),
+        new OPHunterGear(),
+        new Timer(),
+        new DisableBoats(),
+        new PreventEyesFromBreaking()
+    );
+    private static ItemStack compass;
+    private static final Map<World, Location> lastKnownLocation = new HashMap<>();
+    private static Player runner = null;
 
-    private final Map<World, Location> lastKnownLocation = new HashMap<>();
-    private final PotionEffect SPEED_III = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 2);
-    private final PotionEffect SPEED_II = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1);
-    private final PotionEffect SPEED_I = new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 0);
-
-    private Player runner = null;
-    private boolean opgear = false;
-    private boolean hunterbuffs = true;
-    private boolean runnerbuffs = true;
-
-    private final Map<Player, Boolean> usingPrivateChannel = new HashMap<>();
+    public static List<ItemStack> hunterArmor = new ArrayList<>();
+    public static List<ItemStack> hunterItems = new ArrayList<>();
+    public static List<ItemStack> runnerArmor = new ArrayList<>();
+    public static List<ItemStack> runnerItems = new ArrayList<>();
 
     @Override
     public void onEnable() {
+        featureRegistry = new FeatureRegistry(this, features);
+        featureRegistry.registerConfigurationSerializables();
+        featureRegistry.setConfig(getConfig());
+
         getServer().getPluginManager().registerEvents(this, this);
 
         ItemStack compass = new ItemStack(Material.COMPASS);
         ItemMeta compassMeta = compass.getItemMeta();
         assert compassMeta != null;
         compassMeta.addEnchant(Enchantment.UNBREAKING, 1, true);
+        compassMeta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
         compassMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         compass.setItemMeta(compassMeta);
 
-        List<ItemStack> opArmor = Stream.of(
-                        Material.DIAMOND_BOOTS,
-                        Material.DIAMOND_LEGGINGS,
-                        Material.DIAMOND_CHESTPLATE,
-                        Material.DIAMOND_HELMET
-                )
-                .map(ItemStack::new)
-                .peek(i -> {
-                    i.addEnchantment(Enchantment.PROTECTION, 4);
-                    i.addEnchantment(Enchantment.UNBREAKING, 3);
-                    ItemMeta meta = i.getItemMeta();
-                    assert meta != null;
-                    meta.setLore(OP_LORE);
-                    i.setItemMeta(meta);
-                })
-                .toList();
-
-        ItemStack opAxe = new ItemStack(Material.DIAMOND_AXE);
-        opAxe.addEnchantment(Enchantment.SHARPNESS, 1);
-        opAxe.addEnchantment(Enchantment.UNBREAKING, 3);
-
-        this.compass = compass;
-        this.opArmor = opArmor;
-        this.opAxe = opAxe;
-
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            if (!hunterbuffs || runner == null ) return; // minimal impact cuz this is the only plugin & this isn't prod
-
-            for (Player hunter : Bukkit.getOnlinePlayers()) {
-                Location location = runner.getWorld().equals(hunter.getWorld()) ? runner.getLocation() : lastKnownLocation.get(hunter.getWorld());
-
-                if (location == null) return;
-
-                double distanceSquared = location.distanceSquared(hunter.getLocation());
-                PotionEffect speedBuff = calculateSpeedBuff(distanceSquared);
-
-                if (speedBuff == null) {
-                    hunter.removePotionEffect(PotionEffectType.SPEED);
-                } else {
-                    PotionEffect currentSpeed = hunter.getActivePotionEffects().stream()
-                            .filter(p -> p.getType() == PotionEffectType.SPEED).findFirst().orElse(null);
-                    if (currentSpeed != null && currentSpeed.getAmplifier() > speedBuff.getAmplifier()) {
-                        hunter.removePotionEffect(PotionEffectType.SPEED);
-                    }
-                    hunter.addPotionEffect(speedBuff);
-                }
-            }
-        }, 0, 20*10);
-
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            Bukkit.getOnlinePlayers().forEach(this::updateCompass);
-        }, 0, 20*4);
-    }
-
-    private PotionEffect calculateSpeedBuff(double distanceSquared) {
-        if (distanceSquared > 2250*2250) {
-            return SPEED_III;
-        } else if (distanceSquared > 1500*1500) {
-            return SPEED_II;
-        } else if (distanceSquared > 750*750) {
-            return SPEED_I;
-        } else {
-            return null;
-        }
+        MinecraftManhunt.compass = compass;
     }
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        featureRegistry.saveAll();
+        featureRegistry.disableAll();
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         return switch (args.length) {
-            case 1 -> Stream.of("speedrunner", "opgear", "runnerbuffs", "hunterbuffs", "giveitems", "reset", "private")
-                    .filter(s -> s.startsWith(args[0])).toList();
-            case 2 -> {
-                if (args[0].equalsIgnoreCase("speedrunner")) {
-                    yield null;
-                } else {
-                    yield List.of();
-                }
+            case 1 -> {
+                String input = args[0].toLowerCase();
+                // subcommands
+                yield complete(input, "speedrunner", "settings", "save", "reload", "reset");
             }
+            case 2 -> switch (args[0].toLowerCase()) {
+                case "speedrunner" ->
+                        complete(args[1], Bukkit.getOnlinePlayers().stream()
+                                .map(Player::getName).toArray(String[]::new));
+                case "settings" ->
+                        complete(args[1], getConfig().getKeys(true).stream()
+                                .filter(k -> !(getConfig().get(k) instanceof MemorySection)).toArray(String[]::new));
+                default -> List.of();
+            };
             default -> List.of();
         };
     }
 
+    private static List<String> complete(String input, String... possibleCompletions) {
+        return Stream.of(possibleCompletions)
+                .filter(s -> s.startsWith(input))
+                .toList();
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (runner == null && !(args.length == 2 && args[0].equalsIgnoreCase("speedrunner"))) {
+            sender.sendMessage(Component.text("Use /mm speedrunner <name> or click here to set the speedrunner!", NamedTextColor.YELLOW)
+                    .clickEvent(ClickEvent.suggestCommand("/mm speedrunner "))
+                    .hoverEvent(HoverEvent.showText(Component.text("/mm speedrunner <name>"))));
+            return true;
+        }
         if (label.equalsIgnoreCase("mm") || label.equalsIgnoreCase("minecraftmanhunt")) {
             if (args.length == 0) {
                 sender.sendMessage(STR."\{ChatColor.RED}Not a valid command!");
@@ -159,6 +126,7 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
 
             switch (args[0].toLowerCase()) {
                 case "speedrunner" -> {
+                    if (args.length == 1) return false;
                     Player player = Bukkit.getPlayer(args[1]);
 
                     if (player == null) {
@@ -166,63 +134,115 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
                         return false;
                     }
 
+                    if (runner == null) {
+                        featureRegistry.loadAll();
+                    }
+
                     runner = player;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
+                    Bukkit.broadcastMessage(STR."\{ChatColor.GREEN}\{player.getName()} is the speedrunner!");
                 }
-                case "opgear" -> {
-                    opgear =  !opgear;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}OP Hunter gear is now \{ChatColor.BOLD}\{opgear ? "enabled" : "disabled"}");
-                }
-                case "runnerbuffs" -> {
-                    runnerbuffs =  !runnerbuffs;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}Runner buffs are now \{ChatColor.BOLD}\{runnerbuffs ? "enabled" : "disabled"}");
-                }
-                case "hunterbuffs" -> {
-                    hunterbuffs =  !hunterbuffs;
-                    sender.sendMessage(STR."\{ChatColor.GREEN}Hunter buffs are now \{ChatColor.BOLD}\{hunterbuffs ? "enabled" : "disabled"}");
-                }
-                case "private" -> {
-                    if (sender instanceof Player player) {
-                        boolean usingPrivate = !usingPrivateChannel.get(player);
-                        usingPrivateChannel.put(player, usingPrivate);
-                        sender.sendMessage(STR."\{ChatColor.GREEN}Private channel is now \{ChatColor.BOLD}\{usingPrivate ? "enabled" : "disabled"}");
-                    } else {
-                        sender.sendMessage("Nice try console...");
+                case "settings" -> {
+                    FileConfiguration config = getConfig();
+                    switch (args.length) {
+                        case 1 -> {
+                            for (String key : config.getKeys(true)) {
+                                Object value = config.get(key);
+                                if (value == null) continue;
+                                String stringValue = value.toString();
+                                Component component = getComponent(key, stringValue, value);
+                                sender.sendMessage(component);
+                            }
+                        }
+                        case 2 -> {
+                            String path = args[1];
+                            Object value = config.get(path);
+                            sender.sendMessage(STR."\"\{path}\"'s value: \{value}");
+                        }
+                        case 3 -> {
+                            String path = args[1];
+                            String value = args[2];
+                            boolean success = featureRegistry.setValue(path, value);
+
+                            if (success) {
+                                sender.sendMessage(STR."\{ChatColor.GREEN}Value updated!");
+                                featureRegistry.saveAll();
+                            } else {
+                                sender.sendMessage(STR."\{ChatColor.RED}Could not update value!");
+                                return false;
+                            }
+                        }
+                        default -> {
+                            return false;
+                        }
                     }
                 }
-                case "giveitems" -> giveItems();
-                case "reset" -> reset();
+                case "save" -> {
+                    sender.sendMessage("Saving config...");
+                    featureRegistry.saveAll();
+                    sender.sendMessage("Saved config!");
+                }
+                case "reload" -> {
+                    sender.sendMessage("Reloading config...");
+                    reload(() -> sender.sendMessage("Reloaded!"));
+                }
+                case "reset" -> {
+                    Bukkit.broadcast(Component.text("Picking a new spot..."));
+                    reset();
+                }
                 default -> {
                     sender.sendMessage(STR."\{ChatColor.RED}Not a valid command!");
                     return false;
                 }
 
             }
-        } else { // label == "shout"
-            if (args.length == 0 && sender instanceof Player player) {
-                usingPrivateChannel.put(player, false);
-                sender.sendMessage(STR."\{ChatColor.GREEN}Private channel is now \{ChatColor.BOLD}disabled");
-            } else {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < args.length; i++) {
-                    builder.append(args[i]);
-                    if (i != args.length - 1) {
-                        builder.append(" ");
-                    }
-                }
-
-                Bukkit.broadcastMessage(STR."<\{sender.getName()}> \{builder.toString()}");
-            }
         }
         return true;
     }
 
+    private static @NotNull Component getComponent(String key, String stringValue, Object value) {
+        String[] lines = stringValue.split("\n");
+        Component component = Component.text(key, NamedTextColor.YELLOW)
+                .clickEvent(ClickEvent.suggestCommand(STR."/mm settings \{key}"))
+                .append(Component.text(":", NamedTextColor.WHITE));
+
+        if (!(value instanceof MemorySection)) {
+            Component displayValue = lines.length <= 1
+                    ? Component.text(STR." \{stringValue}", NamedTextColor.WHITE)
+                    : Component.text(STR." \{lines[0]}", NamedTextColor.WHITE)
+                    .hoverEvent(HoverEvent.showText(Component.text(stringValue, NamedTextColor.WHITE)));
+            component = component.append(displayValue);
+        }
+        return component;
+    }
+
+    protected void reload(Runnable callback) {
+        featureRegistry.disableAll();
+        reloadConfig();
+
+        Bukkit.getScheduler().runTask(this, () -> {
+            featureRegistry.loadAll();
+            featureRegistry.enableAll();
+            callback.run();
+        });
+    }
+
     private void reset() {
-        World world = Bukkit.getWorlds().stream()
-                .filter(w -> w.getEnvironment() == World.Environment.NORMAL)
-                .findFirst().orElse(runner.getWorld());
+        World world = runner == null ? Bukkit.getWorlds().getFirst() : runner.getWorld();
         Location location = world.getSpawnLocation();
+        Set<Biome> bannedBiomes = Set.of(
+                Biome.OCEAN,
+                Biome.COLD_OCEAN,
+                Biome.DEEP_COLD_OCEAN,
+                Biome.DEEP_OCEAN,
+                Biome.WARM_OCEAN,
+                Biome.LUKEWARM_OCEAN,
+                Biome.DEEP_LUKEWARM_OCEAN
+        );
+
         location.add(new Vector(50000, 0, 50000));
+        while (!bannedBiomes.contains(location.getBlock().getBiome())) {
+            location.add(new Vector(500, 0, 500));
+        }
 
         // search for top of the world
         for (int y = 319; y >= 0; y--) {
@@ -236,101 +256,132 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         world.setSpawnLocation(location);
         Bukkit.getOnlinePlayers().forEach(p -> {
             p.getInventory().clear();
+            p.setRespawnLocation(null, true); // may need to change
             p.setHealth(0);
         });
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancement revoke @a everything");
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "weather clear");
         world.setTime(1000);
     }
 
-    public boolean isRunner(Player p) { return p.equals(runner); }
-    public boolean isHunter(Player p) { return !p.equals(runner); }
-    public void giveHunterGear(Player p) {
-        if (opgear) {
-            ItemStack[] armor = opArmor.toArray(new ItemStack[0]);
-            p.getInventory().setArmorContents(armor);
-            p.getInventory().addItem(opAxe);
-        }
-        p.getInventory().addItem(compass);
+    public static boolean isRunner(Player p) { return p.equals(runner); }
+    public static boolean isHunter(Player p) { return !p.equals(runner); }
+    public static Player getRunner() { return runner; }
+    public static void setRunner(Player runner) {
+        MinecraftManhunt.runner = runner;
     }
-    public boolean isRightClick(Action action) {
+
+    public static void giveHunterGear(Player p) {
+        p.getInventory().addItem(compass);
+        p.getInventory().addItem(hunterItems.toArray(new ItemStack[0]));
+        if (!hunterArmor.isEmpty()) {
+            p.getInventory().setArmorContents(hunterArmor.toArray(new ItemStack[0]));
+        }
+    }
+
+    public static void giveRunnerGear(Player p) {
+        p.getInventory().addItem(runnerItems.toArray(new ItemStack[0]));
+        if (!runnerArmor.isEmpty()) {
+            p.getInventory().setArmorContents(runnerArmor.toArray(new ItemStack[0]));
+        }
+    }
+
+    public static boolean isRightClick(Action action) {
         return action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
     }
 
-
-    public void giveItems() {
+    public static void giveItems() {
         Bukkit.getOnlinePlayers().stream()
-                .filter(this::isHunter)
-                .forEach(this::giveHunterGear);
+                .filter(MinecraftManhunt::isHunter)
+                .forEach(MinecraftManhunt::giveHunterGear);
+        giveRunnerGear(runner);
     }
 
-    public String updateCompass(Player p) {
+    public static TrackedLocation updateHunterCompass(Player p) {
+        if (runner == null) return new TrackedLocation(null, true);
+
+        TrackedLocation trackedLocation = getRunnerLocation(p.getWorld());
+
+        if (p.getInventory().contains(Material.COMPASS)) {
+            if (isHunter(p)) {
+                if (!trackedLocation.exists()) {
+                    return trackedLocation;
+                }
+
+                setCompassTarget(p, trackedLocation.location());
+            }
+        }
+        return trackedLocation;
+    }
+
+    public static void setCompassTarget(Player p, Location location) {
+        World.Environment environment = Objects.requireNonNull(location.getWorld()).getEnvironment();
+
+        if (!p.getInventory().contains(Material.COMPASS)) return;
+
         ItemStack compass = p.getInventory().getItem(p.getInventory().first(Material.COMPASS));
 
-        if (runner == null) return STR."\{ChatColor.RED}Use \"/mm speedrunner <name>\" to set a speedrunner";
-
-        if (compass != null)
-            if (isHunter(p)) {
-                Location loc;
-                boolean isSameWorld = runner.getWorld().equals(p.getWorld());
-                World.Environment environment = runner.getWorld().getEnvironment();
-
-                if (isSameWorld) {
-                    loc = runner.getLocation();
-                } else {
-                    loc = lastKnownLocation.get(p.getWorld());
-                }
-
-                if (loc == null) {
-                    return STR."\{ChatColor.RED}No Location Found...";
-                }
-
-                if (environment == World.Environment.NORMAL) {
-                    p.setCompassTarget(runner.getLocation());
-                } else {
-                    CompassMeta meta = (CompassMeta) compass.getItemMeta();
-                    assert meta != null;
-                    meta.setItemName("Compass");
-                    meta.setLodestone(runner.getLocation());
-                    meta.setLodestoneTracked(false);
+        if (environment == World.Environment.NORMAL) {
+            p.setCompassTarget(location);
+            if (compass != null) {
+                CompassMeta meta = (CompassMeta) compass.getItemMeta();
+                assert meta != null;
+                if (meta.getLodestone() != null) {
+                    meta.itemName(Component.text("Compass"));
+                    meta.setLodestone(null);
                     compass.setItemMeta(meta);
-                }
-
-                if (isSameWorld) {
-                    return STR."\{ChatColor.YELLOW}Updated Compass";
-                } else {
-                    return STR."\{ChatColor.YELLOW}Updated Compass to Last Known Location";
-                }
-            } else {
-                if (runnerbuffs && p.getWorld().getEnvironment() == World.Environment.NETHER) {
-                    World nether = p.getWorld();
-
-                    Location result = Objects.requireNonNull(nether.locateNearestStructure(runner.getLocation(), Structure.FORTRESS, 750, false)).getLocation();
-
-                    CompassMeta meta = (CompassMeta) compass.getItemMeta();
-                    assert meta != null;
-                    meta.setItemName("Compass");
-                    meta.setLodestone(result);
-                    meta.setLodestoneTracked(false);
-                    compass.setItemMeta(meta);
-
-                    return STR."\{ChatColor.YELLOW}Updated Compass to Closest Nether Fortress";
                 }
             }
-        return STR."\{ChatColor.RED}How did you get here??";
+        } else if (environment == World.Environment.NETHER) {
+            if (compass == null) return;
+            CompassMeta meta = (CompassMeta) compass.getItemMeta();
+            assert meta != null;
+            meta.itemName(Component.text("Compass"));
+            meta.setLodestone(location);
+            meta.setLodestoneTracked(false);
+            compass.setItemMeta(meta);
+        }
+    }
+
+    public static TrackedLocation getRunnerLocation(World world) {
+        if (runner == null) return new TrackedLocation(null, true);
+
+        boolean isOutdated = !runner.getWorld().equals(world);
+        Location location = isOutdated ? lastKnownLocation.get(world) : runner.getLocation();
+
+        return new TrackedLocation(location, isOutdated);
     }
 
     @EventHandler
     public void rightClickCompass(PlayerInteractEvent event) {
-        ItemStack item = event.getItem();
-        if (runner != null && item != null && isRightClick(event.getAction()) && item.getType() == Material.COMPASS) {
-            Player p = event.getPlayer();
+        Player p = event.getPlayer();
 
-            p.sendMessage(updateCompass(p));
+        if (runner != null && isRightClickOnCompass(event) && isHunter(p)) {
+            TrackedLocation location = updateHunterCompass(p);
+            if (location.exists() && !location.isOutdated()) {
+                p.sendMessage(STR."\{ChatColor.YELLOW}Updated Compass");
+            } else if (location.exists()) {
+                p.sendMessage(STR."\{ChatColor.YELLOW}Updated Compass to Last Known Location");
+            } else {
+                p.sendMessage(STR."\{ChatColor.RED}Speedrunner not found! Compass was not updated");
+            }
         }
     }
 
+    public static boolean isRightClickOnCompass(PlayerInteractEvent event) {
+        return event.getItem() != null && isRightClick(event.getAction()) && event.getItem().getType() == Material.COMPASS;
+    }
+
+    public FeatureRegistry getFeatureRegistry() {
+        return featureRegistry;
+    }
+
+    public void setFeatureRegistry(List<Feature> features) {
+        featureRegistry = new FeatureRegistry(this, features);
+    }
+
     @EventHandler
-    public void updateLastKnownLocation(PlayerPortalEvent event) {
+    public void updateLastKnownLocation(PlayerTeleportEvent event) {
         Player p = event.getPlayer();
         if (isRunner(p)) {
             lastKnownLocation.put(event.getFrom().getWorld(), event.getFrom());
@@ -338,75 +389,10 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void modifyDamage(EntityDamageEvent event) {
-        if (event.getEntityType() == EntityType.PLAYER) {
-            Player p = (Player) event.getEntity();
-            EntityDamageEvent.DamageCause cause = event.getCause();
-
-            if (runnerbuffs && isRunner(p)) {
-                switch (cause) {
-                    case EntityDamageEvent.DamageCause.FIRE_TICK -> {
-                        if (p.getHealth() - event.getFinalDamage() <= 0) {
-                            p.setFireTicks(0);
-                            event.setCancelled(true);
-                        }
-                    }
-                    case EntityDamageEvent.DamageCause.FALL -> {
-                        if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                            damageToHalfAHeart(event);
-                        }
-                    }
-                }
-            }
-
-            if (hunterbuffs && isHunter(p)) {
-                if (cause == EntityDamageEvent.DamageCause.FALL) {
-                    if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                        damageToHalfAHeart(event);
-                    }
-                }
-            }
-        }
-    }
-
-    public void damageToHalfAHeart(EntityDamageEvent event) {
-        LivingEntity e = (LivingEntity) event.getEntity();
-        if (e.getHealth() > .5) {
-            e.setHealth(
-                    Math.max(e.getHealth() - event.getFinalDamage(), 0.5)
-            );
-            event.setDamage(0);
-        }
-
-    }
-
-    @EventHandler
-    public void buffTrades(PiglinBarterEvent event) {
-        if (runnerbuffs && Math.random() < .2) {
-            event.getOutcome().add(new ItemStack(Material.ENDER_PEARL, (int) Math.ceil(Math.random() * 2)));
-        }
-    }
-
-    @EventHandler
-    public void buffBlazes(EntityDeathEvent event) {
-        if (runnerbuffs && event.getEntityType() == EntityType.BLAZE) {
-            event.getDrops().clear();
-            if (Math.random() < .75)
-                event.getDrops().add(new ItemStack(Material.BLAZE_ROD));
-        }
-    }
-
-    @EventHandler
-    public void onDeath(PlayerDeathEvent event) {
-        event.getDrops().remove(compass);
-        if (opgear) {
-            List<ItemStack> toRemove = new ArrayList<>();
-            for (ItemStack drop : event.getDrops()) {
-                if (OP_LORE.equals(Objects.requireNonNull(drop.getItemMeta()).getLore())) {
-                    toRemove.add(drop);
-                }
-            }
-            event.getDrops().removeAll(toRemove);
+    public void disconnectEvent(PlayerQuitEvent event) {
+        Player p = event.getPlayer();
+        if (isRunner(p)) {
+            lastKnownLocation.put(p.getLocation().getWorld(), p.getLocation());
         }
     }
 
@@ -415,14 +401,8 @@ public final class MinecraftManhunt extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         if (isHunter(player)) {
             giveHunterGear(player);
-        }
-    }
-
-    @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
-        if (usingPrivateChannel.get(event.getPlayer()) && isHunter(event.getPlayer())) {
-            event.getRecipients().remove(runner);
-            event.setFormat(STR."\{ChatColor.LIGHT_PURPLE}Private:\{ChatColor.RESET} <%s> %s");
+        } else { // isRunner(player)
+            giveRunnerGear(player);
         }
     }
 }
