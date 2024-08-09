@@ -1,9 +1,9 @@
 package me.tsvrn9.minecraftmanhunt.features;
 
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Boat;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 
 public class DisableBoats implements Feature, Listener {
     @Override
@@ -12,10 +12,10 @@ public class DisableBoats implements Feature, Listener {
     }
 
     @EventHandler
-    public void onBoatPlace(EntitySpawnEvent e) {
-        if (e.getEntityType() == EntityType.BOAT
-                || e.getEntityType() == EntityType.CHEST_BOAT) {
+    public void onBoatPlace(PlayerInteractAtEntityEvent e) {
+        if (e.getRightClicked() instanceof Boat) {
             e.setCancelled(true);
+            e.getPlayer().sendMessage("Boats are disabled!");
         }
     }
 }

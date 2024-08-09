@@ -41,6 +41,11 @@ public class Timer implements Feature, CommandExecutor, TabCompleter {
     }
 
     @Override
+    public boolean enabledByDefault() {
+        return true;
+    }
+
+    @Override
     public boolean onCommand(CommandSender sender, Command command, String label,  String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("stop")) {
             sender.sendMessage(STR."\{ChatColor.RED}Timer stopped!");

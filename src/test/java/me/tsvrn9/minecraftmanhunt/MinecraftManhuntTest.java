@@ -16,7 +16,9 @@ public class MinecraftManhuntTest extends BaseTest {
 
     @BeforeEach
     void setup() {
-        hunter2 = server.addPlayer();        MinecraftManhunt.giveHunterGear(hunter);        MinecraftManhunt.giveHunterGear(hunter2);
+        hunter2 = server.addPlayer();
+        MinecraftManhunt.giveHunterGear(hunter);
+        MinecraftManhunt.giveHunterGear(hunter2);
     }
 
     @Test

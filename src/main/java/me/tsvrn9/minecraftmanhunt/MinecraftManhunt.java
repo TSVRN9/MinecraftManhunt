@@ -80,8 +80,8 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        featureRegistry.disableAll();
         featureRegistry.saveAll();
+        featureRegistry.disableAll();
     }
 
     @Override
@@ -170,7 +170,7 @@ public class MinecraftManhunt extends JavaPlugin implements Listener {
                 }
                 case "save" -> {
                     sender.sendMessage("Saving config...");
-                    saveConfig();
+                    featureRegistry.saveAll();
                     sender.sendMessage("Saved config!");
                 }
                 case "reload" -> {

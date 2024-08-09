@@ -14,10 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 
 public class FeatureRegistry implements CommandExecutor, TabCompleter {
@@ -199,8 +196,21 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
 
         if (feature == null) return false;
 
+        if (valuePath.equals("enabled")) {
+            boolean toEnable = Boolean.parseBoolean(value);
+            if (toEnable && !isEnabled(feature)) {
+                enable(feature);
+            } else if (!toEnable && isEnabled(feature)) {
+                disable(feature);
+            } else {
+                reload(feature);
+            }
+            return true;
+        }
+
         Class<? extends Feature> cls = feature.getClass();
-        for (Field field : cls.getFields()) {
+
+        for (Field field : cls.getDeclaredFields()) {
             if (field.isAnnotationPresent(ConfigValue.class)) {
                 try {
                     field.setAccessible(true);
@@ -209,26 +219,13 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
 
                     if (key.equals(valuePath)) {
                         if (stringToObjectHandlers.containsKey(field.getType())) { // only support primitives && strings
-                            if (isEnabled.get(feature)) {
-                                feature.onDisable(plugin);
-                            }
                             Object newValue = stringToObjectHandlers.get(field.getType()).apply(value);
                             field.set(feature, newValue);
-                            if (isEnabled.get(feature)) {
-                                feature.onEnable(plugin);
-                            }
+                            reload(feature);
                             return true;
                         } else {
                             return false;
                         }
-                    } else if (key.equals("enabled")) {
-                        boolean enabled = Boolean.parseBoolean(value);
-                        if (enabled && !isEnabled.get(feature)) {
-                            enable(feature);
-                        } else if (!enabled && isEnabled.get(feature)) {
-                            disable(feature);
-                        }
-                        return true;
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -280,5 +277,9 @@ public class FeatureRegistry implements CommandExecutor, TabCompleter {
         } else {
             throw new IllegalStateException("Tab registry doesn't contain this command, yet onTabComplete ran?");
         }
+    }
+
+    public boolean isEnabled(Feature feature) {
+        return isEnabled.get(feature);
     }
 }
