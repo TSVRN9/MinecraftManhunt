@@ -22,4 +22,6 @@ Make sure to run your server with java preview features on! (I used string templ
 * Gives speed for hunters who are very far away
   * The game becomes more than a running sim when you die!
 * Reset with a single command
-  * `/mm reset` will teleport all players ~70k blocks away and reset achievements, set a new world spawn, and 
+  * `/mm reset` will teleport all players ~70k blocks away and reset achievements, set a new world spawn, and kill all players!
+* Configure... EVERYTHING!
+  * `/mm settings` will allow enabling and disabling specific features and handicaps without touching a config.yml!
