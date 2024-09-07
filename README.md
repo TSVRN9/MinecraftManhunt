@@ -25,3 +25,5 @@ Make sure to run your server with java preview features on! (I used string templ
   * `/mm reset` will teleport all players ~70k blocks away and reset achievements, set a new world spawn, and kill all players!
 * Configure... EVERYTHING!
   * `/mm settings` will allow enabling and disabling specific features and handicaps without touching a config.yml!
+
+<img src="./assets/preview.png" width=600 alt="Image preview of customizable features"/>
